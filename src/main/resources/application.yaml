@@ -1,0 +1,15 @@
+llm:
+  baseUrl: "https://api.anthropic.com/v1/messages"
+  apiKey: ${ANTHROPIC_API_KEY}
+  model: "claude-sonnet-4-20250514"
+  maxTokens: 4096
+
+bluesky:
+  baseUrl: "https://bsky.social"
+  handle: ${BLUESKY_HANDLE}
+  appPassword: ${BLUESKY_APP_PASSWORD}
+  minRelevanceScore: 5
+
+pipeline:
+  dailyRunTime: "07:00"
+  maxFollowUpDepth: 5
