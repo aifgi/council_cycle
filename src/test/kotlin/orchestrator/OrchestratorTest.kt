@@ -9,6 +9,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import llm.MockLlmClient
+import processor.LoggingResultProcessor
+import processor.ResultProcessor
 import scraper.ContentExtractor
 import scraper.WebScraper
 import kotlin.test.Test
@@ -37,7 +39,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ ->
             """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
 
@@ -61,7 +63,7 @@ class OrchestratorTest {
                 """{"type":"committee_page_found","url":"https://council.example.com/committees/planning"}"""
             }
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 5)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
 
         val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
 
@@ -78,7 +80,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ ->
             """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findMeetings(
             "https://council.example.com/planning", "Test Council", "Planning", "2026-01-01", "2026-06-30",
@@ -106,7 +108,7 @@ class OrchestratorTest {
                 """{"type":"meetings_found","meetings":[{"date":"2026-04-01","title":"April Meeting"}]}"""
             }
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 5)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
 
         val result = orchestrator.findMeetings(
             "https://council.example.com/planning", "Test Council", "Planning", "2026-01-01", "2026-06-30",
@@ -126,7 +128,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ ->
             """{"type":"agenda_analyzed","schemes":[{"title":"High Street Cycle Lane","topic":"cycle lanes","summary":"New protected lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
         val result = orchestrator.analyzeAgenda(
@@ -146,7 +148,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ ->
             """{"type":"agenda_analyzed","schemes":[]}"""
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
         val result = orchestrator.analyzeAgenda(
@@ -164,7 +166,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ ->
             """{"type":"fetch","urls":["https://example.com"],"reason":"Need more"}"""
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 2)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 2)
 
         val result = orchestrator.findCommitteePage("https://example.com", "Test", "Planning")
 
@@ -175,7 +177,7 @@ class OrchestratorTest {
     fun `returns null when all fetches fail`() = runBlocking {
         val scraper = webScraper(emptyMap())
         val llm = MockLlmClient { _ -> """{"type":"committee_page_found","url":"https://x.com"}""" }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findCommitteePage("https://missing.example.com", "Test", "Planning")
 
@@ -186,7 +188,7 @@ class OrchestratorTest {
     fun `returns null on malformed LLM response`() = runBlocking {
         val scraper = webScraper(mapOf("https://example.com" to "<html><body><p>Page</p></body></html>"))
         val llm = MockLlmClient { _ -> "this is not json" }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 3)
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findCommitteePage("https://example.com", "Test", "Planning")
 
@@ -214,7 +216,9 @@ class OrchestratorTest {
                 else -> error("Unexpected call $callCount")
             }
         }
-        val orchestrator = Orchestrator(scraper, llm, maxIterations = 5)
+        val processed = mutableListOf<List<Scheme>>()
+        val processor = ResultProcessor { _, _, schemes -> processed.add(schemes) }
+        val orchestrator = Orchestrator(scraper, llm, processor, maxIterations = 5)
 
         val council = CouncilConfig(
             name = "Test Council",
@@ -226,5 +230,8 @@ class OrchestratorTest {
         orchestrator.processCouncil(council)
 
         assertEquals(3, callCount)
+        assertEquals(1, processed.size)
+        assertEquals(1, processed[0].size)
+        assertEquals("Cycle Lane", processed[0][0].title)
     }
 }

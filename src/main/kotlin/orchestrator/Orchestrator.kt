@@ -4,6 +4,7 @@ import config.CouncilConfig
 import kotlinx.serialization.json.Json
 import llm.LlmClient
 import org.slf4j.LoggerFactory
+import processor.ResultProcessor
 import scraper.WebScraper
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -13,6 +14,7 @@ private val logger = LoggerFactory.getLogger(Orchestrator::class.java)
 class Orchestrator(
     private val webScraper: WebScraper,
     private val llmClient: LlmClient,
+    private val resultProcessor: ResultProcessor,
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val heavyModel: String = DEFAULT_HEAVY_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
@@ -53,17 +55,7 @@ class Orchestrator(
                 }
             }
 
-            if (allSchemes.isNotEmpty()) {
-                logger.info("Found {} scheme(s) for '{}' at '{}':", allSchemes.size, committee, council.name)
-                for (scheme in allSchemes) {
-                    logger.info(
-                        "  [{}] {} - {} (meeting: {})",
-                        scheme.topic, scheme.title, scheme.summary, scheme.meetingDate,
-                    )
-                }
-            } else {
-                logger.info("No relevant schemes found for '{}' at '{}'", committee, council.name)
-            }
+            resultProcessor.process(council.name, committee, allSchemes)
         }
     }
 

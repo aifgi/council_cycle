@@ -7,6 +7,8 @@ import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
 import orchestrator.Orchestrator
+import processor.LoggingResultProcessor
+import processor.ResultProcessor
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
@@ -51,7 +53,8 @@ fun main(args: Array<String>) {
     }
 
     val orchestratorModule = module {
-        single { Orchestrator(get(), get()) }
+        single<ResultProcessor> { LoggingResultProcessor() }
+        single { Orchestrator(get(), get(), get()) }
     }
 
     val koinApp = startKoin {
