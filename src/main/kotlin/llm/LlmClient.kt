@@ -1,5 +1,5 @@
 package llm
 
-interface LlmClient<T> {
-    suspend fun generate(prompt: String, model: String): T
+interface LlmClient {
+    suspend fun generate(prompt: String, model: String): String
 }

@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 
 class ClaudeLlmClient(
     private val client: AnthropicClient,
-) : LlmClient<String> {
+) : LlmClient {
 
     override suspend fun generate(prompt: String, model: String): String =
         withContext(Dispatchers.IO) {
