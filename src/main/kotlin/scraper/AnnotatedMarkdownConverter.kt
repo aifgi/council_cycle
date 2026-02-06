@@ -63,10 +63,6 @@ class AnnotatedMarkdownConverter {
                 sb.append("`")
             }
             "hr" -> sb.append("\n\n---\n\n")
-            "img" -> {
-                val alt = element.attr("alt")
-                if (alt.isNotBlank()) sb.append("[Image: $alt]")
-            }
             else -> convertChildren(element, sb)
         }
     }

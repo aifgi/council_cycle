@@ -59,6 +59,14 @@ class ContentExtractorTest {
     }
 
     @Test
+    fun `removes images`() {
+        val html = """<html><body><p>Text</p><img alt="A photo" src="photo.jpg"></body></html>"""
+        val result = extractor.extract(html)
+        assertContains(result, "Text")
+        assertFalse(result.contains("photo"))
+    }
+
+    @Test
     fun `removes elements with aria-hidden true`() {
         val html = """<html><body><p>Visible</p><span aria-hidden="true">Icon</span></body></html>"""
         val result = extractor.extract(html)

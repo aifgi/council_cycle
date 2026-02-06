@@ -20,7 +20,7 @@ class ContentExtractor(
     }
 
     private fun removeInvisibleElements(document: Document) {
-        document.select("script, style, noscript, template, meta, link").remove()
+        document.select("script, style, noscript, template, meta, link, img").remove()
         document.select("[hidden]").remove()
         document.select("[style~=(?i)display\\s*:\\s*none]").remove()
         document.select("[style~=(?i)visibility\\s*:\\s*hidden]").remove()

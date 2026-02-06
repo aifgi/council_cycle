@@ -89,12 +89,6 @@ class AnnotatedMarkdownConverterTest {
     }
 
     @Test
-    fun `converts images to alt text`() {
-        val result = convert("""<img alt="A photo" src="photo.jpg">""")
-        assertContains(result, "[Image: A photo]")
-    }
-
-    @Test
     fun `converts br to newline`() {
         val result = convert("<p>Line one<br>Line two</p>")
         assertContains(result, "Line one\nLine two")
