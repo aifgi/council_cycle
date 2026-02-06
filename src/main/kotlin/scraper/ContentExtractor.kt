@@ -53,6 +53,7 @@ class ContentExtractor(
             "main",
             "[role=main]",
             "#content",
+            "#content-holder",
             "#main-content",
             ".content-area",
         )
