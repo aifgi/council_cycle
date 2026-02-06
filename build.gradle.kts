@@ -23,6 +23,7 @@ dependencies {
     implementation("io.ktor:ktor-client-core:3.0.3")
     implementation("io.ktor:ktor-client-cio:3.0.3")
 
+    testImplementation("io.ktor:ktor-client-mock:3.0.3")
     testImplementation(kotlin("test"))
 }
 
