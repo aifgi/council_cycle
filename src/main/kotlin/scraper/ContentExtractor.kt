@@ -33,12 +33,17 @@ class ContentExtractor(
             matches.addAll(document.select(selector))
         }
 
+        // Remove ancestors when nested matches exist (keep innermost)
+        val deduplicated = matches.filter { candidate ->
+            matches.none { other -> other !== candidate && candidate.isAncestorOf(other) }
+        }
+
         return when {
-            matches.size > 1 -> throw IllegalStateException(
-                "Found ${matches.size} main content elements matching selectors $mainContentSelectors"
+            deduplicated.size > 1 -> throw IllegalStateException(
+                "Found ${deduplicated.size} main content elements matching selectors $mainContentSelectors"
             )
-            matches.size == 1 -> {
-                val element = matches.first()
+            deduplicated.size == 1 -> {
+                val element = deduplicated.first()
                 Document(document.baseUri()).also { it.body().appendChild(element.clone()) }
             }
             else -> {
@@ -46,6 +51,15 @@ class ContentExtractor(
                 document
             }
         }
+    }
+
+    private fun Element.isAncestorOf(other: Element): Boolean {
+        var parent = other.parent()
+        while (parent != null) {
+            if (parent === this) return true
+            parent = parent.parent()
+        }
+        return false
     }
 
     companion object {

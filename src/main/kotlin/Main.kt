@@ -38,9 +38,10 @@ fun main(args: Array<String>) {
     runBlocking {
         for (council in appConfig.councils) {
             logger.info("Fetching site for council: {}", council.name)
-            val html = scraper.fetch(council.siteUrl)
-            if (html != null) {
-                logger.info("Fetched {} bytes for {}", html.length, council.name)
+            val content = scraper.fetchAndExtract(council.siteUrl)
+            if (content != null) {
+                logger.info("Extracted {} chars for {}", content.length, council.name)
+                logger.debug("Content for {}:\n{}", council.name, content)
             }
         }
     }
