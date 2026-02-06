@@ -1,6 +1,8 @@
 councils:
   - name: "Example Council"
     siteUrl: "https://example.council.gov.uk"
+    dateFrom: "2025-12-01"
+    dateTo: "2026-01-31"
     committees:
       - "Planning Committee"
       - "Finance Committee"

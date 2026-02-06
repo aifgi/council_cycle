@@ -10,4 +10,6 @@ data class CouncilConfig(
     val name: String,
     val siteUrl: String,
     val committees: List<String>,
+    val dateFrom: String? = null,
+    val dateTo: String? = null,
 )

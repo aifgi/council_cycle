@@ -13,6 +13,7 @@ class WebScraper(
     private val contentExtractor: ContentExtractor,
 ) {
     suspend fun fetch(url: String): String? {
+        logger.info("Fetching $url page")
         return try {
             val response = httpClient.get(url)
             if (!response.status.isSuccess()) {

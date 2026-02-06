@@ -5,6 +5,8 @@ import kotlinx.serialization.json.Json
 import llm.LlmClient
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger(Orchestrator::class.java)
 
@@ -17,26 +19,109 @@ class Orchestrator(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun processCouncil(council: CouncilConfig) {
+        val dateFrom = council.dateFrom ?: LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val dateTo = council.dateTo
+            ?: LocalDate.now().plusMonths(3).format(DateTimeFormatter.ISO_LOCAL_DATE)
+
         for (committee in council.committees) {
             logger.info("Processing committee '{}' for council '{}'", committee, council.name)
-            val result = findCommitteeInfo(council.name, council.siteUrl, committee)
-            if (result != null) {
-                logger.info("Found info for '{}' at '{}': {}", committee, council.name, result)
+
+            val committeeUrl = findCommitteePage(council.siteUrl, council.name, committee)
+            if (committeeUrl == null) {
+                logger.warn("Could not find page for committee '{}' at '{}'", committee, council.name)
+                continue
+            }
+            logger.info("Found committee page for '{}': {}", committee, committeeUrl)
+
+            val meetings = findMeetings(committeeUrl, council.name, committee, dateFrom, dateTo)
+            if (meetings == null || meetings.isEmpty()) {
+                logger.warn("No meetings found for '{}' at '{}'", committee, council.name)
+                continue
+            }
+            logger.info("Found {} meeting(s) for '{}'", meetings.size, committee)
+
+            val allSchemes = mutableListOf<Scheme>()
+            for (meeting in meetings) {
+                if (meeting.agendaUrl == null) {
+                    logger.info("No agenda URL for meeting '{}' on {}", meeting.title, meeting.date)
+                    continue
+                }
+                val schemes = analyzeAgenda(meeting.agendaUrl, council.name, committee, meeting)
+                if (schemes != null) {
+                    allSchemes.addAll(schemes)
+                }
+            }
+
+            if (allSchemes.isNotEmpty()) {
+                logger.info("Found {} scheme(s) for '{}' at '{}':", allSchemes.size, committee, council.name)
+                for (scheme in allSchemes) {
+                    logger.info(
+                        "  [{}] {} - {} (meeting: {})",
+                        scheme.topic, scheme.title, scheme.summary, scheme.meetingDate,
+                    )
+                }
             } else {
-                logger.warn("Could not find info for '{}' at '{}'", committee, council.name)
+                logger.info("No relevant schemes found for '{}' at '{}'", committee, council.name)
             }
         }
     }
 
-    internal suspend fun findCommitteeInfo(
-        councilName: String,
+    internal suspend fun findCommitteePage(
         startUrl: String,
+        councilName: String,
         committeeName: String,
-    ): LlmResponse.Found? {
-        var urls = listOf(startUrl)
+    ): String? {
+        return navigationLoop(
+            startUrls = listOf(startUrl),
+            phaseName = "Phase 1: Find committee page",
+            buildPrompt = { pageContents -> buildPhase1Prompt(councilName, committeeName, pageContents) },
+            extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
+        )
+    }
+
+    internal suspend fun findMeetings(
+        committeeUrl: String,
+        councilName: String,
+        committeeName: String,
+        dateFrom: String,
+        dateTo: String,
+    ): List<Meeting>? {
+        return navigationLoop(
+            startUrls = listOf(committeeUrl),
+            phaseName = "Phase 2: Find meetings",
+            buildPrompt = { pageContents ->
+                buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, pageContents)
+            },
+            extractResult = { response -> (response as? PhaseResponse.MeetingsFound)?.meetings },
+        )
+    }
+
+    internal suspend fun analyzeAgenda(
+        agendaUrl: String,
+        councilName: String,
+        committeeName: String,
+        meeting: Meeting,
+    ): List<Scheme>? {
+        return navigationLoop(
+            startUrls = listOf(agendaUrl),
+            phaseName = "Phase 3: Analyze agenda",
+            buildPrompt = { pageContents ->
+                buildPhase3Prompt(councilName, committeeName, meeting, pageContents)
+            },
+            extractResult = { response -> (response as? PhaseResponse.AgendaAnalyzed)?.schemes },
+        )
+    }
+
+    private suspend fun <R> navigationLoop(
+        startUrls: List<String>,
+        phaseName: String,
+        buildPrompt: (List<Pair<String, String>>) -> String,
+        extractResult: (PhaseResponse) -> R?,
+    ): R? {
+        var urls = startUrls
 
         for (iteration in 1..maxIterations) {
-            logger.info("Iteration {} for '{}': fetching {} URL(s)", iteration, committeeName, urls.size)
+            logger.info("{} — iteration {}: fetching {} URL(s)", phaseName, iteration, urls.size)
 
             val pageContents = urls.mapNotNull { url ->
                 val content = webScraper.fetchAndExtract(url)
@@ -44,51 +129,59 @@ class Orchestrator(
             }
 
             if (pageContents.isEmpty()) {
-                logger.warn("All fetches failed for '{}' on iteration {}", committeeName, iteration)
+                logger.warn("{} — all fetches failed on iteration {}", phaseName, iteration)
                 return null
             }
 
-            val prompt = buildPrompt(councilName, committeeName, pageContents)
+            val prompt = buildPrompt(pageContents)
             val rawResponse = llmClient.generate(prompt, model)
             val response = parseResponse(rawResponse) ?: return null
 
+            val result = extractResult(response)
+            if (result != null) return result
+
             when (response) {
-                is LlmResponse.Found -> return response
-                is LlmResponse.Fetch -> {
-                    logger.info("LLM requests fetching {} more URL(s): {}", response.urls.size, response.reason)
+                is PhaseResponse.Fetch -> {
+                    logger.info("{} — LLM requests {} more URL(s): {}", phaseName, response.urls.size, response.reason)
                     urls = response.urls
+                }
+                else -> {
+                    logger.warn("{} — unexpected response type: {}", phaseName, response::class.simpleName)
+                    return null
                 }
             }
         }
 
-        logger.warn("Max iterations ({}) reached for '{}'", maxIterations, committeeName)
+        logger.warn("{} — max iterations ({}) reached", phaseName, maxIterations)
         return null
     }
 
-    private fun buildPrompt(
+    private fun formatPages(pageContents: List<Pair<String, String>>): String {
+        return pageContents.joinToString("\n\n") { (url, content) ->
+            "--- Page: $url ---\n$content"
+        }
+    }
+
+    private fun buildPhase1Prompt(
         councilName: String,
         committeeName: String,
         pageContents: List<Pair<String, String>>,
     ): String {
-        val pagesSection = pageContents.joinToString("\n\n") { (url, content) ->
-            "--- Page: $url ---\n$content"
-        }
-
         return """
-You are helping find information about a council committee.
+You are helping find a council committee's page on their website.
 
 Council: $councilName
 Committee: $committeeName
 
 Below are the contents of one or more web pages from this council's website. Your job is to either:
-1. Find the next meeting date and details for this committee, OR
-2. Identify links on the page that are likely to lead to the committee information.
+1. Identify the URL of the committee's dedicated page, OR
+2. Identify links that are likely to lead to the committee's page.
 
-$pagesSection
+${formatPages(pageContents)}
 
-Respond with a single JSON object (no other text). The JSON must have a "type" field that is either "fetch" or "found".
+Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
-If you need to follow links to find the information, respond with:
+If you need to follow links to find the committee page, respond with:
 {
   "type": "fetch",
   "urls": ["https://..."],
@@ -97,37 +190,117 @@ If you need to follow links to find the information, respond with:
 
 Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links.
 
-If you found the committee meeting information, respond with:
+If you found the committee's page URL, respond with:
 {
-  "type": "found",
-  "committeeName": "The exact committee name",
-  "nextMeetingDate": "YYYY-MM-DD or null if not found",
-  "nextMeetingTime": "HH:MM or null if not found",
-  "nextMeetingLocation": "Location or null if not found",
-  "agendaUrl": "URL to agenda or null if not found",
-  "summary": "Brief human-readable summary of what you found"
-}
-
-If the page content is completely unrelated and has no useful links, respond with:
-{
-  "type": "found",
-  "committeeName": "$committeeName",
-  "nextMeetingDate": null,
-  "nextMeetingTime": null,
-  "nextMeetingLocation": null,
-  "agendaUrl": null,
-  "summary": "Could not find any relevant information or links."
+  "type": "committee_page_found",
+  "url": "https://..."
 }
 """.trimIndent()
     }
 
-    internal fun parseResponse(raw: String): LlmResponse? {
+    private fun buildPhase2Prompt(
+        councilName: String,
+        committeeName: String,
+        dateFrom: String,
+        dateTo: String,
+        pageContents: List<Pair<String, String>>,
+    ): String {
+        return """
+You are helping find committee meeting agendas.
+
+Council: $councilName
+Committee: $committeeName
+Date range: $dateFrom to $dateTo
+
+Below are the contents of one or more web pages. Your job is to either:
+1. Find meetings within the date range that have agenda documents/pages, OR
+2. Identify links that are likely to lead to meeting listings or agendas.
+
+${formatPages(pageContents)}
+
+Respond with a single JSON object (no other text). The JSON must have a "type" field.
+
+If you need to follow links, respond with:
+{
+  "type": "fetch",
+  "urls": ["https://..."],
+  "reason": "Brief explanation"
+}
+
+Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links.
+
+If you found meetings, respond with:
+{
+  "type": "meetings_found",
+  "meetings": [
+    {
+      "date": "YYYY-MM-DD",
+      "title": "Meeting title",
+      "agendaUrl": "https://... or null if no agenda link found"
+    }
+  ]
+}
+
+Only include meetings within the date range $dateFrom to $dateTo.
+""".trimIndent()
+    }
+
+    private fun buildPhase3Prompt(
+        councilName: String,
+        committeeName: String,
+        meeting: Meeting,
+        pageContents: List<Pair<String, String>>,
+    ): String {
+        val topicsList = TOPICS.joinToString(", ")
+
+        return """
+You are analyzing a council committee meeting agenda for transport and planning schemes.
+
+Council: $councilName
+Committee: $committeeName
+Meeting date: ${meeting.date}
+Meeting title: ${meeting.title}
+
+Look for any items related to these topics: $topicsList
+
+${formatPages(pageContents)}
+
+Respond with a single JSON object (no other text). The JSON must have a "type" field.
+
+If you need to follow links to read the full agenda or individual agenda items, respond with:
+{
+  "type": "fetch",
+  "urls": ["https://..."],
+  "reason": "Brief explanation"
+}
+
+Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links.
+
+If you have analyzed the agenda, respond with:
+{
+  "type": "agenda_analyzed",
+  "schemes": [
+    {
+      "title": "Name of the scheme or agenda item",
+      "topic": "Which topic it relates to (one of: $topicsList)",
+      "summary": "Brief summary of what is proposed or discussed",
+      "meetingDate": "${meeting.date}",
+      "committeeName": "$committeeName"
+    }
+  ]
+}
+
+If no relevant items are found, return an empty schemes array: {"type": "agenda_analyzed", "schemes": []}
+""".trimIndent()
+    }
+
+    internal fun parseResponse(raw: String): PhaseResponse? {
         val jsonString = raw
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```")
             .trim()
         return try {
-            json.decodeFromString<LlmResponse>(jsonString)
+            json.decodeFromString<PhaseResponse>(jsonString)
         } catch (e: Exception) {
             logger.error("Failed to parse LLM response: {}", e.message)
             logger.debug("Raw LLM response:\n{}", raw)
@@ -138,5 +311,11 @@ If the page content is completely unrelated and has no useful links, respond wit
     companion object {
         const val DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
         const val DEFAULT_MAX_ITERATIONS = 5
+        val TOPICS = listOf(
+            "cycle lanes",
+            "traffic filters",
+            "LTN/low traffic neighbourhoods",
+            "public realm improvements",
+        )
     }
 }

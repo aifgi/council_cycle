@@ -1,6 +1,8 @@
 councils:
   - name: "Royal Borough of Kingston Upon Thames"
     siteUrl: "https://moderngov.kingston.gov.uk/mgListCommittees.aspx"
+    dateFrom: "2025-12-01"
+    dateTo: "2026-01-31"
     committees:
       - "Surbiton Neighbourhood Committee"
       - "Kingston and North Kingston Neighbourhood Committee"
