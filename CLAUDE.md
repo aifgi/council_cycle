@@ -13,23 +13,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-Council Cycle is a Kotlin JVM application that scrapes UK council websites for committee meeting information using LLM-guided navigation.
+Council Cycle is a Kotlin JVM application that scrapes UK council websites for committee meeting information (specifically transport and planning schemes) using LLM-guided navigation.
 
 **Key tech:** Kotlin 2.1, Gradle 8.11, Ktor Client (CIO engine) for HTTP, Jsoup for HTML parsing, Anthropic Java SDK for Claude, kotlinx.serialization (YAML via kaml, JSON), Koin for DI, SLF4J/Logback for logging.
 
 **Entry point:** `Main.kt` — takes two CLI arguments: a YAML config file and an LLM credentials file (plain text API key). Sets up four Koin DI modules (`configModule`, `scraperModule`, `llmModule`, `orchestratorModule`), then runs `Orchestrator.processCouncil()` for each council.
 
-**Packages:**
-- `config/` — `AppConfig` (serializable data classes for YAML structure) and `ConfigLoader` (reads and parses YAML files). Config defines councils with names, site URLs, and committee lists. See `config.example.yaml` for the schema.
-- `scraper/` — Content extraction pipeline:
-  - `WebScraper` — fetches pages via Ktor. `fetch()` returns raw HTML, `fetchAndExtract()` fetches and runs the full extraction pipeline.
-  - `ContentExtractor` — three-step pipeline: (1) remove invisible elements (scripts, styles, hidden/aria-hidden, images), (2) extract main content area via configurable CSS selectors (deduplicates nested matches by keeping innermost), (3) convert to annotated markdown via `AnnotatedMarkdownConverter`.
-  - `AnnotatedMarkdownConverter` — converts Jsoup Document to a lightweight text format preserving structure (headings, links, lists, bold/italic, code, blockquotes) while stripping all HTML markup. Tables use `[Table] / Row N: [Header] value` format. Relative links are resolved to absolute URLs using the page's base URL.
-- `llm/` — LLM integration:
-  - `LlmClient` — interface with `suspend fun generate(prompt: String, model: String): String`.
-  - `ClaudeLlmClient` — implementation using the Anthropic Java SDK. Takes an `AnthropicClient` in constructor, wraps calls in `Dispatchers.IO`.
-- `orchestrator/` — LLM-guided navigation loop:
-  - `Orchestrator` — for each council/committee, runs an iterative loop (max 5 iterations): fetch pages via `WebScraper`, send content to LLM with a prompt asking it to find committee meeting info, parse the JSON response, and either follow URLs the LLM suggests or return found results.
-  - `LlmResponse` — sealed interface with two variants: `Fetch` (urls + reason to follow more links) and `Found` (committee meeting details). Deserialized from LLM JSON output using a `"type"` discriminator.
+### 3-Phase Pipeline (orchestrator/)
 
-**DI setup:** Koin modules are defined inline in `Main.kt` — `configModule` provides `AppConfig`, `scraperModule` provides `HttpClient`/`ContentExtractor`/`WebScraper`, `llmModule` provides `AnthropicClient`/`LlmClient`, `orchestratorModule` provides `Orchestrator`.
+The orchestrator runs a 3-phase pipeline per council/committee, each phase using a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations):
+
+1. **Phase 1: Find Committee Page** — navigates from council site URL to the specific committee's page. Uses light model (Haiku).
+2. **Phase 2: Find Meetings** — locates meetings with agenda links within a date range. Uses light model (Haiku).
+3. **Phase 3: Analyze Agenda** — extracts transport/planning schemes from agenda documents. Uses heavy model (Sonnet).
+
+**Two-model strategy:** Haiku (`lightModel`) for simple navigation tasks (phases 1-2), Sonnet (`heavyModel`) for complex analysis (phase 3).
+
+`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePageFound` (phase 1 result), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaAnalyzed` (phase 3 result, contains `Scheme` objects).
+
+### Other Packages
+
+- `config/` — `AppConfig` (serializable data classes) and `ConfigLoader`. Config defines councils with names, site URLs, committee lists, and optional date range. See `config.example.yaml` for the schema.
+- `scraper/` — Content extraction pipeline:
+  - `WebScraper` — fetches pages via Ktor. `fetch()` returns raw HTML, `fetchAndExtract()` runs the full extraction pipeline.
+  - `ContentExtractor` — three-step pipeline: (1) remove invisible elements, (2) extract main content area via configurable CSS selectors (keeps innermost on nested matches), (3) convert to annotated markdown.
+  - `AnnotatedMarkdownConverter` — converts Jsoup Document to lightweight text preserving structure (headings, links, lists, tables as `[Table] / Row N: [Header] value`). Resolves relative links to absolute URLs.
+- `llm/` — `LlmClient` interface (`suspend fun generate(prompt, model)`) with `ClaudeLlmClient` implementation using the Anthropic Java SDK.
+- `processor/` — `ResultProcessor` fun interface for handling extracted schemes. `LoggingResultProcessor` is the default implementation.
+
+**DI setup:** Koin modules defined inline in `Main.kt` — `configModule` (AppConfig), `scraperModule` (HttpClient/ContentExtractor/WebScraper), `llmModule` (AnthropicClient/LlmClient), `orchestratorModule` (ResultProcessor/Orchestrator).
+
+## Test Conventions
+
+- Tests use `kotlin.test` with JUnit 5 and backtick-named test methods.
+- HTTP mocking: Ktor `MockEngine` for scraper/orchestrator tests, OkHttp `MockWebServer` for Anthropic API tests.
+- `MockLlmClient` (in test sources) accepts a handler function for orchestrator testing.
