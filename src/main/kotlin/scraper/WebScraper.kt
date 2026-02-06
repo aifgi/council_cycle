@@ -13,9 +13,10 @@ class WebScraper(
     private val contentExtractor: ContentExtractor,
 ) {
     suspend fun fetch(url: String): String? {
-        logger.info("Fetching $url page")
+        val encodedUrl = url.replace(" ", "%20")
+        logger.info("Fetching $encodedUrl page")
         return try {
-            val response = httpClient.get(url)
+            val response = httpClient.get(encodedUrl)
             if (!response.status.isSuccess()) {
                 logger.error("Failed to fetch {}: HTTP {}", url, response.status)
                 return null

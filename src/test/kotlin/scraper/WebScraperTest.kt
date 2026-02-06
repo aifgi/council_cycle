@@ -46,6 +46,26 @@ class WebScraperTest {
     }
 
     @Test
+    fun `fetch encodes spaces in URL`() = runBlocking {
+        val mockEngine = MockEngine { request ->
+            assertEquals(
+                "https://example.com/docs/My%20Report%20Jan%202026.pdf?T=10",
+                request.url.toString(),
+            )
+            respond(
+                content = "<html>Report</html>",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "text/html"),
+            )
+        }
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
+
+        val result = scraper.fetch("https://example.com/docs/My Report Jan 2026.pdf?T=10")
+
+        assertEquals("<html>Report</html>", result)
+    }
+
+    @Test
     fun `fetch returns null on exception`() = runBlocking {
         val mockEngine = MockEngine { _ ->
             throw RuntimeException("Connection refused")
