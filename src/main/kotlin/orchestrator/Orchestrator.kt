@@ -13,7 +13,8 @@ private val logger = LoggerFactory.getLogger(Orchestrator::class.java)
 class Orchestrator(
     private val webScraper: WebScraper,
     private val llmClient: LlmClient,
-    private val model: String = DEFAULT_MODEL,
+    private val lightModel: String = DEFAULT_LIGHT_MODEL,
+    private val heavyModel: String = DEFAULT_HEAVY_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -74,6 +75,7 @@ class Orchestrator(
         return navigationLoop(
             startUrls = listOf(startUrl),
             phaseName = "Phase 1: Find committee page",
+            model = lightModel,
             buildPrompt = { pageContents -> buildPhase1Prompt(councilName, committeeName, pageContents) },
             extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
         )
@@ -89,6 +91,7 @@ class Orchestrator(
         return navigationLoop(
             startUrls = listOf(committeeUrl),
             phaseName = "Phase 2: Find meetings",
+            model = lightModel,
             buildPrompt = { pageContents ->
                 buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, pageContents)
             },
@@ -105,6 +108,7 @@ class Orchestrator(
         return navigationLoop(
             startUrls = listOf(agendaUrl),
             phaseName = "Phase 3: Analyze agenda",
+            model = heavyModel,
             buildPrompt = { pageContents ->
                 buildPhase3Prompt(councilName, committeeName, meeting, pageContents)
             },
@@ -115,6 +119,7 @@ class Orchestrator(
     private suspend fun <R> navigationLoop(
         startUrls: List<String>,
         phaseName: String,
+        model: String,
         buildPrompt: (List<Pair<String, String>>) -> String,
         extractResult: (PhaseResponse) -> R?,
     ): R? {
@@ -309,7 +314,8 @@ If no relevant items are found, return an empty schemes array: {"type": "agenda_
     }
 
     companion object {
-        const val DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+        const val DEFAULT_LIGHT_MODEL = "claude-haiku-4-5-20251001"
+        const val DEFAULT_HEAVY_MODEL = "claude-sonnet-4-5-20250929"
         const val DEFAULT_MAX_ITERATIONS = 5
         val TOPICS = listOf(
             "cycle lanes",
