@@ -1,0 +1,6 @@
+councils:
+  - name: "Example Council"
+    siteUrl: "https://example.council.gov.uk"
+    committees:
+      - "Planning Committee"
+      - "Finance Committee"

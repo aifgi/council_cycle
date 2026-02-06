@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.1.0"
+    kotlin("plugin.serialization") version "2.1.0"
     application
 }
 
@@ -15,6 +16,9 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
     implementation("io.insert-koin:koin-core:4.0.2")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+    implementation("com.charleskorn.kaml:kaml:0.67.0")
 
     testImplementation(kotlin("test"))
 }
