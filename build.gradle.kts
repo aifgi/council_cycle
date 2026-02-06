@@ -28,6 +28,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:3.0.3")
 
     testImplementation("io.ktor:ktor-client-mock:3.0.3")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(kotlin("test"))
 }
 
