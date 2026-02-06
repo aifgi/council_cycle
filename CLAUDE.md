@@ -25,5 +25,7 @@ Council Cycle is a Kotlin JVM application that scrapes UK council websites for c
   - `WebScraper` — fetches pages via Ktor. `fetch()` returns raw HTML, `fetchAndExtract()` fetches and runs the full extraction pipeline.
   - `ContentExtractor` — three-step pipeline: (1) remove invisible elements (scripts, styles, hidden/aria-hidden, images), (2) extract main content area via configurable CSS selectors (deduplicates nested matches by keeping innermost), (3) convert to annotated markdown via `AnnotatedMarkdownConverter`.
   - `AnnotatedMarkdownConverter` — converts Jsoup Document to a lightweight text format preserving structure (headings, links, lists, bold/italic, code, blockquotes) while stripping all HTML markup. Tables use `[Table] / Row N: [Header] value` format. Relative links are resolved to absolute URLs using the page's base URL.
+- `llm/` — LLM integration:
+  - `LlmClient<T>` — generic interface for sending a prompt string to an LLM and receiving a typed response. `generate()` is a suspend function.
 
 **DI setup:** Koin modules are defined inline in `Main.kt` — `configModule` provides `AppConfig`, `scraperModule` provides `HttpClient`, `ContentExtractor`, and `WebScraper`.
