@@ -73,7 +73,7 @@ class Orchestrator(
             startUrl = startUrl,
             phaseName = "Phase 1: Find committee page",
             model = lightModel,
-            buildPrompt = { (url, content) -> buildPhase1Prompt(councilName, committeeName, url, content) },
+            buildPrompt = { url, content -> buildPhase1Prompt(councilName, committeeName, url, content) },
             extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
         )
     }
@@ -89,7 +89,7 @@ class Orchestrator(
             startUrl = committeeUrl,
             phaseName = "Phase 2: Find meetings",
             model = lightModel,
-            buildPrompt = { (url, content) ->
+            buildPrompt = { url, content ->
                 buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, url, content)
             },
             extractResult = { response -> (response as? PhaseResponse.MeetingsFound)?.meetings },
@@ -106,7 +106,7 @@ class Orchestrator(
             startUrl = agendaUrl,
             phaseName = "Phase 3: Triage agenda",
             model = lightModel,
-            buildPrompt = { (url, content) ->
+            buildPrompt = { url, content ->
                 buildPhase3Prompt(councilName, committeeName, meeting, url, content)
             },
             extractResult = { response -> response as? PhaseResponse.AgendaTriaged },
@@ -130,7 +130,7 @@ class Orchestrator(
         startUrl: String,
         phaseName: String,
         model: String,
-        buildPrompt: (Pair<String, String>) -> String,
+        buildPrompt: (String, String) -> String,
         extractResult: (PhaseResponse) -> R?,
     ): R? {
         val urlQueue = mutableListOf(startUrl)
@@ -145,7 +145,7 @@ class Orchestrator(
                 continue
             }
 
-            val prompt = buildPrompt(url to conversionResult.text)
+            val prompt = buildPrompt(url, conversionResult.text)
             val rawResponse = llmClient.generate(prompt, model)
             val response = parseResponse(rawResponse)
                 ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
