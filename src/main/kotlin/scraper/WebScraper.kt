@@ -28,6 +28,6 @@ class WebScraper(
 
     suspend fun fetchAndExtract(url: String): String? {
         val html = fetch(url) ?: return null
-        return contentExtractor.extract(html)
+        return contentExtractor.extract(html, baseUrl = url)
     }
 }

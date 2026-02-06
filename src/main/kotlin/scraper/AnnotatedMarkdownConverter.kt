@@ -82,7 +82,7 @@ class AnnotatedMarkdownConverter {
     }
 
     private fun appendLink(element: Element, sb: StringBuilder) {
-        val href = element.attr("href")
+        val href = element.absUrl("href")
         if (href.isBlank()) {
             convertChildren(element, sb)
             return

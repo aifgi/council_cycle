@@ -29,8 +29,15 @@ class AnnotatedMarkdownConverterTest {
 
     @Test
     fun `converts links with href`() {
-        val result = convert("""<p>Visit <a href="/page">this page</a></p>""")
-        assertContains(result, "[this page](/page)")
+        val result = convert("""<p>Visit <a href="https://example.com/page">this page</a></p>""")
+        assertContains(result, "[this page](https://example.com/page)")
+    }
+
+    @Test
+    fun `resolves relative links when base url is set`() {
+        val doc = Jsoup.parse("""<p>See <a href="details.aspx?id=1">details</a></p>""", "https://example.com/list")
+        val result = converter.convert(doc)
+        assertContains(result, "[details](https://example.com/details.aspx?id=1)")
     }
 
     @Test
@@ -163,7 +170,7 @@ class AnnotatedMarkdownConverterTest {
         val html = """
             <html><body>
                 <h1>Council Meeting</h1>
-                <p>Held on <strong>Monday</strong> at <a href="/venue">Town Hall</a></p>
+                <p>Held on <strong>Monday</strong> at <a href="https://example.com/venue">Town Hall</a></p>
                 <h2>Agenda</h2>
                 <ol><li>Opening</li><li>Minutes</li></ol>
                 <h2>Attendees</h2>
@@ -179,7 +186,7 @@ class AnnotatedMarkdownConverterTest {
         val result = convert(html)
         assertContains(result, "# Council Meeting")
         assertContains(result, "**Monday**")
-        assertContains(result, "[Town Hall](/venue)")
+        assertContains(result, "[Town Hall](https://example.com/venue)")
         assertContains(result, "## Agenda")
         assertContains(result, "1. Opening")
         assertContains(result, "2. Minutes")
