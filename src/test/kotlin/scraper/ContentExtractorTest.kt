@@ -2,6 +2,7 @@ package scraper
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ContentExtractorTest {
@@ -84,5 +85,63 @@ class ContentExtractorTest {
         assertEquals("/link", doc.select("a").attr("href"))
         assertTrue(doc.select("script").isEmpty())
         assertEquals(0, doc.select("[hidden]").size)
+    }
+
+    @Test
+    fun `extracts main element content`() {
+        val html = "<html><body><header>Nav</header><main><p>Main content</p></main><footer>Foot</footer></body></html>"
+        val doc = extractor.extract(html)
+        assertEquals("Main content", doc.body().text())
+    }
+
+    @Test
+    fun `extracts role=main element content`() {
+        val html = """<html><body><div>Side</div><div role="main"><p>Content</p></div></body></html>"""
+        val doc = extractor.extract(html)
+        assertEquals("Content", doc.body().text())
+    }
+
+    @Test
+    fun `extracts #content element`() {
+        val html = """<html><body><nav>Nav</nav><div id="content"><p>Body</p></div></body></html>"""
+        val doc = extractor.extract(html)
+        assertEquals("Body", doc.body().text())
+    }
+
+    @Test
+    fun `extracts #main-content element`() {
+        val html = """<html><body><nav>Nav</nav><div id="main-content"><p>Here</p></div></body></html>"""
+        val doc = extractor.extract(html)
+        assertEquals("Here", doc.body().text())
+    }
+
+    @Test
+    fun `extracts content-area element`() {
+        val html = """<html><body><aside>Side</aside><div class="content-area"><p>Area</p></div></body></html>"""
+        val doc = extractor.extract(html)
+        assertEquals("Area", doc.body().text())
+    }
+
+    @Test
+    fun `returns full document when no main content found`() {
+        val html = "<html><body><div><p>No main element</p></div></body></html>"
+        val doc = extractor.extract(html)
+        assertEquals("No main element", doc.body().text())
+    }
+
+    @Test
+    fun `throws when multiple main content elements found`() {
+        val html = """<html><body><main><p>First</p></main><div id="content"><p>Second</p></div></body></html>"""
+        assertFailsWith<IllegalStateException> {
+            extractor.extract(html)
+        }
+    }
+
+    @Test
+    fun `uses custom selectors`() {
+        val html = """<html><body><div>Other</div><section class="custom"><p>Custom</p></section></body></html>"""
+        val customExtractor = ContentExtractor(mainContentSelectors = listOf(".custom"))
+        val doc = customExtractor.extract(html)
+        assertEquals("Custom", doc.body().text())
     }
 }
