@@ -18,6 +18,7 @@ dependencies {
     implementation("io.insert-koin:koin-core:4.0.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("com.charleskorn.kaml:kaml:0.67.0")
 
     implementation("com.anthropic:anthropic-java:2.13.0")

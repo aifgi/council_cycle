@@ -6,6 +6,7 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
+import orchestrator.Orchestrator
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
@@ -49,20 +50,19 @@ fun main(args: Array<String>) {
         single<LlmClient> { ClaudeLlmClient(get()) }
     }
 
-    val koinApp = startKoin {
-        modules(configModule, scraperModule, llmModule)
+    val orchestratorModule = module {
+        single { Orchestrator(get(), get()) }
     }
 
-    val scraper = koinApp.koin.get<WebScraper>()
+    val koinApp = startKoin {
+        modules(configModule, scraperModule, llmModule, orchestratorModule)
+    }
+
+    val orchestrator = koinApp.koin.get<Orchestrator>()
 
     runBlocking {
         for (council in appConfig.councils) {
-            logger.info("Fetching site for council: {}", council.name)
-            val content = scraper.fetchAndExtract(council.siteUrl)
-            if (content != null) {
-                logger.info("Extracted {} chars for {}", content.length, council.name)
-                logger.debug("Content for {}:\n{}", council.name, content)
-            }
+            orchestrator.processCouncil(council)
         }
     }
 }
