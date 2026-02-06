@@ -4,11 +4,15 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import org.jsoup.nodes.Document
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger(WebScraper::class.java)
 
-class WebScraper(private val httpClient: HttpClient) {
+class WebScraper(
+    private val httpClient: HttpClient,
+    private val contentExtractor: ContentExtractor,
+) {
     suspend fun fetch(url: String): String? {
         return try {
             val response = httpClient.get(url)
@@ -21,5 +25,10 @@ class WebScraper(private val httpClient: HttpClient) {
             logger.error("Failed to fetch {}: {}", url, e.message)
             null
         }
+    }
+
+    suspend fun fetchAndExtract(url: String): Document? {
+        val html = fetch(url) ?: return null
+        return contentExtractor.extract(html)
     }
 }

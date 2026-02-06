@@ -22,7 +22,7 @@ class WebScraperTest {
                 headers = headersOf(HttpHeaders.ContentType, "text/html"),
             )
         }
-        val scraper = WebScraper(HttpClient(mockEngine))
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
 
         val result = scraper.fetch("https://example.com")
 
@@ -38,7 +38,7 @@ class WebScraperTest {
                 headers = headersOf(HttpHeaders.ContentType, "text/html"),
             )
         }
-        val scraper = WebScraper(HttpClient(mockEngine))
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
 
         val result = scraper.fetch("https://example.com")
 
@@ -50,7 +50,7 @@ class WebScraperTest {
         val mockEngine = MockEngine { _ ->
             throw RuntimeException("Connection refused")
         }
-        val scraper = WebScraper(HttpClient(mockEngine))
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
 
         val result = scraper.fetch("https://example.com")
 

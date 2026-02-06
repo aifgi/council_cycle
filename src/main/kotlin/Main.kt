@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
+import scraper.ContentExtractor
 import scraper.WebScraper
 
 private val logger = LoggerFactory.getLogger("Main")
@@ -24,7 +25,8 @@ fun main(args: Array<String>) {
 
     val scraperModule = module {
         single { HttpClient(CIO) }
-        single { WebScraper(get()) }
+        single { ContentExtractor() }
+        single { WebScraper(get(), get()) }
     }
 
     val koinApp = startKoin {
