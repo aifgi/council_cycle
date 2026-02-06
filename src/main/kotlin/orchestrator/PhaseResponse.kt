@@ -26,6 +26,13 @@ sealed interface PhaseResponse {
     ) : PhaseResponse
 
     @Serializable
+    @SerialName("agenda_triaged")
+    data class AgendaTriaged(
+        val relevant: Boolean,
+        val extract: String? = null,
+    ) : PhaseResponse
+
+    @Serializable
     @SerialName("agenda_analyzed")
     data class AgendaAnalyzed(
         val schemes: List<Scheme>,

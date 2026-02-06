@@ -49,7 +49,12 @@ class Orchestrator(
                     logger.info("No agenda URL for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val schemes = analyzeAgenda(meeting.agendaUrl, council.name, committee, meeting)
+                val triage = triageAgenda(meeting.agendaUrl, council.name, committee, meeting)
+                if (triage == null || !triage.relevant) {
+                    logger.info("Agenda not relevant for meeting '{}' on {}", meeting.title, meeting.date)
+                    continue
+                }
+                val schemes = analyzeExtract(triage.extract!!, council.name, committee, meeting)
                 if (schemes != null) {
                     allSchemes.addAll(schemes)
                 }
@@ -91,21 +96,34 @@ class Orchestrator(
         )
     }
 
-    internal suspend fun analyzeAgenda(
+    internal suspend fun triageAgenda(
         agendaUrl: String,
         councilName: String,
         committeeName: String,
         meeting: Meeting,
-    ): List<Scheme>? {
+    ): PhaseResponse.AgendaTriaged? {
         return navigationLoop(
             startUrls = listOf(agendaUrl),
-            phaseName = "Phase 3: Analyze agenda",
-            model = heavyModel,
+            phaseName = "Phase 3: Triage agenda",
+            model = lightModel,
             buildPrompt = { pageContents ->
                 buildPhase3Prompt(councilName, committeeName, meeting, pageContents)
             },
-            extractResult = { response -> (response as? PhaseResponse.AgendaAnalyzed)?.schemes },
+            extractResult = { response -> response as? PhaseResponse.AgendaTriaged },
         )
+    }
+
+    internal suspend fun analyzeExtract(
+        extract: String,
+        councilName: String,
+        committeeName: String,
+        meeting: Meeting,
+    ): List<Scheme>? {
+        logger.info("Phase 4: Analyzing extract for meeting '{}' on {}", meeting.title, meeting.date)
+        val prompt = buildPhase4Prompt(councilName, committeeName, meeting, extract)
+        val rawResponse = llmClient.generate(prompt, heavyModel)
+        val response = parseResponse(rawResponse) ?: return null
+        return (response as? PhaseResponse.AgendaAnalyzed)?.schemes
     }
 
     private suspend fun <R> navigationLoop(
@@ -251,14 +269,14 @@ Only include meetings within the date range $dateFrom to $dateTo.
         val topicsList = TOPICS.joinToString(", ")
 
         return """
-You are analyzing a council committee meeting agenda for transport and planning schemes.
+You are triaging a council committee meeting agenda to check if it contains items related to transport and planning schemes.
 
 Council: $councilName
 Committee: $committeeName
 Meeting date: ${meeting.date}
 Meeting title: ${meeting.title}
 
-Look for any items related to these topics: $topicsList
+Topics of interest: $topicsList
 
 ${formatPages(pageContents)}
 
@@ -273,7 +291,50 @@ If you need to follow links to read the full agenda or individual agenda items, 
 
 Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links.
 
-If you have analyzed the agenda, respond with:
+Once you have seen enough of the agenda, determine whether it contains any items related to the topics listed above.
+
+If the agenda contains relevant items, extract just the relevant portions verbatim and respond with:
+{
+  "type": "agenda_triaged",
+  "relevant": true,
+  "extract": "The relevant text extracted from the agenda"
+}
+
+Exception: if the page contains meeting minutes (rather than a forward-looking agenda), return a summary focusing on the question raised and the decision made, rather than verbatim text.
+
+If no relevant items are found, respond with:
+{
+  "type": "agenda_triaged",
+  "relevant": false
+}
+""".trimIndent()
+    }
+
+    private fun buildPhase4Prompt(
+        councilName: String,
+        committeeName: String,
+        meeting: Meeting,
+        extract: String,
+    ): String {
+        val topicsList = TOPICS.joinToString(", ")
+
+        return """
+You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
+
+Council: $councilName
+Committee: $committeeName
+Meeting date: ${meeting.date}
+Meeting title: ${meeting.title}
+
+Topics of interest: $topicsList
+
+--- Extracted content ---
+$extract
+
+Respond with a single JSON object (no other text). The JSON must have a "type" field.
+
+Analyze the content above and identify any schemes or items related to the topics listed.
+
 {
   "type": "agenda_analyzed",
   "schemes": [

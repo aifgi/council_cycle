@@ -68,10 +68,12 @@ class EndToEndTest {
                 2 -> """{"type":"fetch","urls":["$base/ieListMeetings.aspx?CommitteeId=711"],"reason":"Following browse meetings link"}"""
                 // Phase 2, iter 2: BrowseMeetings → extract meetings in date range
                 3 -> """{"type":"meetings_found","meetings":[{"date":"2025-12-04","title":"Kingston and North Kingston Neighbourhood Committee (Cancelled)","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"},{"date":"2026-01-15","title":"Kingston and North Kingston Neighbourhood Committee","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}]}"""
-                // Phase 3: Agenda_412 (cancelled meeting) → no schemes
-                4 -> """{"type":"agenda_analyzed","schemes":[]}"""
-                // Phase 3: Agenda_151 (real meeting) → schemes found
-                5 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
+                // Phase 3: Triage Agenda_412 (cancelled meeting) → not relevant
+                4 -> """{"type":"agenda_triaged","relevant":false}"""
+                // Phase 3: Triage Agenda_151 (real meeting) → relevant, extract content
+                5 -> """{"type":"agenda_triaged","relevant":true,"extract":"Item 5: Manorgate Road Traffic Management - proposal for traffic filters in the Manorgate Road area.\nItem 8: Coombe Lane West Zebra Crossing - proposed zebra crossing on Coombe Lane West."}"""
+                // Phase 4: Analyze extract → schemes found
+                6 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
                 else -> error("Unexpected LLM call $callCount")
             }
         }
@@ -82,7 +84,7 @@ class EndToEndTest {
 
         orchestrator.processCouncil(councilConfig)
 
-        assertEquals(5, callCount, "Expected exactly 5 LLM calls")
+        assertEquals(6, callCount, "Expected exactly 6 LLM calls")
         assertEquals(1, processed.size, "ResultProcessor should be called once (one committee)")
         assertEquals(2, processed[0].size, "Expected 2 schemes from the January meeting")
         assertEquals("Manorgate Road Traffic Management", processed[0][0].title)

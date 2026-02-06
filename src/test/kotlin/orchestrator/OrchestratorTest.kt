@@ -118,44 +118,63 @@ class OrchestratorTest {
         assertNull(result?.get(0)?.agendaUrl)
     }
 
-    // --- Phase 3: Analyze agenda ---
+    // --- Phase 3: Triage agenda ---
 
     @Test
-    fun `phase 3 returns schemes when found immediately`() = runBlocking {
+    fun `phase 3 returns relevant triage with extract`() = runBlocking {
         val scraper = webScraper(
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Agenda items</p></body></html>"),
         )
+        val llm = MockLlmClient { _ ->
+            """{"type":"agenda_triaged","relevant":true,"extract":"Item 1: High Street Cycle Lane - new protected lane"}"""
+        }
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
+
+        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda(
+            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
+        )
+
+        assertEquals(true, result?.relevant)
+        assertEquals("Item 1: High Street Cycle Lane - new protected lane", result?.extract)
+    }
+
+    @Test
+    fun `phase 3 returns not relevant when no matching items`() = runBlocking {
+        val scraper = webScraper(
+            mapOf("https://council.example.com/agenda/1" to "<html><body><p>Budget discussion</p></body></html>"),
+        )
+        val llm = MockLlmClient { _ ->
+            """{"type":"agenda_triaged","relevant":false}"""
+        }
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
+
+        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda(
+            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
+        )
+
+        assertEquals(false, result?.relevant)
+    }
+
+    // --- Phase 4: Analyze extract ---
+
+    @Test
+    fun `phase 4 returns schemes from extract`() = runBlocking {
+        val scraper = webScraper(emptyMap())
         val llm = MockLlmClient { _ ->
             """{"type":"agenda_analyzed","schemes":[{"title":"High Street Cycle Lane","topic":"cycle lanes","summary":"New protected lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
-        val result = orchestrator.analyzeAgenda(
-            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
+        val result = orchestrator.analyzeExtract(
+            "Item 1: High Street Cycle Lane - new protected lane", "Test Council", "Planning", meeting,
         )
 
         assertEquals(1, result?.size)
         assertEquals("High Street Cycle Lane", result?.get(0)?.title)
         assertEquals("cycle lanes", result?.get(0)?.topic)
-    }
-
-    @Test
-    fun `phase 3 returns empty list when no relevant schemes`() = runBlocking {
-        val scraper = webScraper(
-            mapOf("https://council.example.com/agenda/1" to "<html><body><p>Budget discussion</p></body></html>"),
-        )
-        val llm = MockLlmClient { _ ->
-            """{"type":"agenda_analyzed","schemes":[]}"""
-        }
-        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
-
-        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
-        val result = orchestrator.analyzeAgenda(
-            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
-        )
-
-        assertEquals(0, result?.size)
     }
 
     // --- Cross-cutting concerns ---
@@ -198,7 +217,7 @@ class OrchestratorTest {
     // --- End-to-end processCouncil ---
 
     @Test
-    fun `processCouncil runs all three phases`() = runBlocking {
+    fun `processCouncil runs all four phases`() = runBlocking {
         val scraper = webScraper(
             mapOf(
                 "https://council.example.com" to "<html><body><p>Main</p></body></html>",
@@ -212,7 +231,8 @@ class OrchestratorTest {
             when (callCount) {
                 1 -> """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
                 2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
-                3 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
+                3 -> """{"type":"agenda_triaged","relevant":true,"extract":"Item 1: Cycle Lane proposal"}"""
+                4 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
                 else -> error("Unexpected call $callCount")
             }
         }
@@ -229,7 +249,7 @@ class OrchestratorTest {
         )
         orchestrator.processCouncil(council)
 
-        assertEquals(3, callCount)
+        assertEquals(4, callCount)
         assertEquals(1, processed.size)
         assertEquals(1, processed[0].size)
         assertEquals("Cycle Lane", processed[0][0].title)

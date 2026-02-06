@@ -19,17 +19,18 @@ Council Cycle is a Kotlin JVM application that scrapes UK council websites for c
 
 **Entry point:** `Main.kt` — takes two CLI arguments: a YAML config file and an LLM credentials file (plain text API key). Sets up four Koin DI modules (`configModule`, `scraperModule`, `llmModule`, `orchestratorModule`), then runs `Orchestrator.processCouncil()` for each council.
 
-### 3-Phase Pipeline (orchestrator/)
+### 4-Phase Pipeline (orchestrator/)
 
-The orchestrator runs a 3-phase pipeline per council/committee, each phase using a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations):
+The orchestrator runs a 4-phase pipeline per council/committee. Phases 1-3 use a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations). Phase 4 is a single LLM call.
 
 1. **Phase 1: Find Committee Page** — navigates from council site URL to the specific committee's page. Uses light model (Haiku).
 2. **Phase 2: Find Meetings** — locates meetings with agenda links within a date range. Uses light model (Haiku).
-3. **Phase 3: Analyze Agenda** — extracts transport/planning schemes from agenda documents. Uses heavy model (Sonnet).
+3. **Phase 3: Triage Agenda** — navigates agenda pages and determines relevance. If relevant, extracts the relevant portions (or summarizes minutes). Uses light model (Haiku). Returns `AgendaTriaged` with a `relevant` flag and optional `extract`.
+4. **Phase 4: Analyze Extract** — analyzes pre-extracted content from phase 3 and produces `Scheme` objects. Uses heavy model (Sonnet). Single LLM call (no navigation). Only runs if phase 3 found relevant content.
 
-**Two-model strategy:** Haiku (`lightModel`) for simple navigation tasks (phases 1-2), Sonnet (`heavyModel`) for complex analysis (phase 3).
+**Two-model strategy:** Haiku (`lightModel`) for navigation and triage (phases 1-3), Sonnet (`heavyModel`) for deep analysis (phase 4).
 
-`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePageFound` (phase 1 result), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaAnalyzed` (phase 3 result, contains `Scheme` objects).
+`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePageFound` (phase 1 result), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaTriaged` (phase 3 result, relevant flag + extracted text), `AgendaAnalyzed` (phase 4 result, contains `Scheme` objects).
 
 ### Other Packages
 
