@@ -7,19 +7,19 @@ import org.jsoup.nodes.TextNode
 
 class AnnotatedMarkdownConverter {
 
-    fun convert(document: Document): String {
+    fun convert(document: Document, transformUrl: (String) -> String = { it }): String {
         val sb = StringBuilder()
-        convertChildren(document.body(), sb)
+        convertChildren(document.body(), sb, transformUrl)
         return sb.toString().replace(Regex("\n{3,}"), "\n\n").trim()
     }
 
-    private fun convertChildren(element: Element, sb: StringBuilder) {
+    private fun convertChildren(element: Element, sb: StringBuilder, transformUrl: (String) -> String) {
         for (child in element.childNodes()) {
-            convertNode(child, sb)
+            convertNode(child, sb, transformUrl)
         }
     }
 
-    private fun convertNode(node: Node, sb: StringBuilder) {
+    private fun convertNode(node: Node, sb: StringBuilder, transformUrl: (String) -> String) {
         when (node) {
             is TextNode -> {
                 val text = node.text().let { if (node.parent()?.nodeName() == "pre") node.wholeText else it }
@@ -27,80 +27,80 @@ class AnnotatedMarkdownConverter {
                     sb.append(text)
                 }
             }
-            is Element -> convertElement(node, sb)
+            is Element -> convertElement(node, sb, transformUrl)
         }
     }
 
-    private fun convertElement(element: Element, sb: StringBuilder) {
+    private fun convertElement(element: Element, sb: StringBuilder, transformUrl: (String) -> String) {
         when (element.tagName()) {
-            "h1" -> appendHeading(element, sb, "#")
-            "h2" -> appendHeading(element, sb, "##")
-            "h3" -> appendHeading(element, sb, "###")
-            "h4" -> appendHeading(element, sb, "####")
-            "h5" -> appendHeading(element, sb, "#####")
-            "h6" -> appendHeading(element, sb, "######")
-            "p" -> appendBlock(element, sb)
+            "h1" -> appendHeading(element, sb, "#", transformUrl)
+            "h2" -> appendHeading(element, sb, "##", transformUrl)
+            "h3" -> appendHeading(element, sb, "###", transformUrl)
+            "h4" -> appendHeading(element, sb, "####", transformUrl)
+            "h5" -> appendHeading(element, sb, "#####", transformUrl)
+            "h6" -> appendHeading(element, sb, "######", transformUrl)
+            "p" -> appendBlock(element, sb, transformUrl)
             "br" -> sb.append("\n")
-            "a" -> appendLink(element, sb)
-            "ul" -> appendList(element, sb, ordered = false)
-            "ol" -> appendList(element, sb, ordered = true)
+            "a" -> appendLink(element, sb, transformUrl)
+            "ul" -> appendList(element, sb, ordered = false, transformUrl)
+            "ol" -> appendList(element, sb, ordered = true, transformUrl)
             "table" -> appendTable(element, sb)
-            "blockquote" -> appendBlockquote(element, sb)
+            "blockquote" -> appendBlockquote(element, sb, transformUrl)
             "pre" -> appendPreformatted(element, sb)
             "strong", "b" -> {
                 sb.append("**")
-                convertChildren(element, sb)
+                convertChildren(element, sb, transformUrl)
                 sb.append("**")
             }
             "em", "i" -> {
                 sb.append("*")
-                convertChildren(element, sb)
+                convertChildren(element, sb, transformUrl)
                 sb.append("*")
             }
             "code" -> {
                 sb.append("`")
-                convertChildren(element, sb)
+                convertChildren(element, sb, transformUrl)
                 sb.append("`")
             }
             "hr" -> sb.append("\n\n---\n\n")
-            else -> convertChildren(element, sb)
+            else -> convertChildren(element, sb, transformUrl)
         }
     }
 
-    private fun appendHeading(element: Element, sb: StringBuilder, prefix: String) {
+    private fun appendHeading(element: Element, sb: StringBuilder, prefix: String, transformUrl: (String) -> String) {
         sb.append("\n\n")
         sb.append(prefix)
         sb.append(" ")
-        convertChildren(element, sb)
+        convertChildren(element, sb, transformUrl)
         sb.append("\n\n")
     }
 
-    private fun appendBlock(element: Element, sb: StringBuilder) {
+    private fun appendBlock(element: Element, sb: StringBuilder, transformUrl: (String) -> String) {
         sb.append("\n\n")
-        convertChildren(element, sb)
+        convertChildren(element, sb, transformUrl)
         sb.append("\n\n")
     }
 
-    private fun appendLink(element: Element, sb: StringBuilder) {
+    private fun appendLink(element: Element, sb: StringBuilder, transformUrl: (String) -> String) {
         val href = element.absUrl("href")
         if (href.isBlank()) {
-            convertChildren(element, sb)
+            convertChildren(element, sb, transformUrl)
             return
         }
         sb.append("[")
-        convertChildren(element, sb)
+        convertChildren(element, sb, transformUrl)
         sb.append("](")
-        sb.append(href)
+        sb.append(transformUrl(href))
         sb.append(")")
     }
 
-    private fun appendList(element: Element, sb: StringBuilder, ordered: Boolean) {
+    private fun appendList(element: Element, sb: StringBuilder, ordered: Boolean, transformUrl: (String) -> String) {
         sb.append("\n\n")
         val items = element.children().filter { it.tagName() == "li" }
         for ((index, item) in items.withIndex()) {
             val prefix = if (ordered) "${index + 1}. " else "- "
             sb.append(prefix)
-            convertChildren(item, sb)
+            convertChildren(item, sb, transformUrl)
             sb.append("\n")
         }
         sb.append("\n")
@@ -135,10 +135,10 @@ class AnnotatedMarkdownConverter {
         sb.append("\n")
     }
 
-    private fun appendBlockquote(element: Element, sb: StringBuilder) {
+    private fun appendBlockquote(element: Element, sb: StringBuilder, transformUrl: (String) -> String) {
         sb.append("\n\n")
         val content = StringBuilder()
-        convertChildren(element, content)
+        convertChildren(element, content, transformUrl)
         content.toString().trim().lines().forEach { line ->
             sb.append("> ")
             sb.append(line)

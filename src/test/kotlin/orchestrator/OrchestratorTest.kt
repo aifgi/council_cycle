@@ -214,6 +214,29 @@ class OrchestratorTest {
         assertNull(result)
     }
 
+    // --- URL token round-trip ---
+
+    @Test
+    fun `URL tokens in prompt resolve back to full URLs`() = runBlocking {
+        val scraper = webScraper(
+            mapOf(
+                "https://council.example.com" to
+                    """<html><body><a href="https://council.example.com/committees">Committees</a></body></html>""",
+            ),
+        )
+        val llm = MockLlmClient { prompt ->
+            // The prompt should contain @N tokens in markdown links instead of full URLs
+            val linkToken = Regex("""\[Committees]\((@\d+)\)""").find(prompt)!!.groupValues[1]
+            """{"type":"committee_page_found","url":"$linkToken"}"""
+        }
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
+
+        val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
+
+        // The token should have been resolved back to the full URL
+        assertEquals("https://council.example.com/committees", result)
+    }
+
     // --- End-to-end processCouncil ---
 
     @Test

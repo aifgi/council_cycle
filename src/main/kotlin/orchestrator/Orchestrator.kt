@@ -138,9 +138,11 @@ class Orchestrator(
         for (iteration in 1..maxIterations) {
             logger.info("{} — iteration {}: fetching {} URL(s)", phaseName, iteration, urls.size)
 
+            val urlRegistry = UrlRegistry()
+
             val pageContents = urls.mapNotNull { url ->
-                val content = webScraper.fetchAndExtract(url)
-                if (content != null) url to content else null
+                val content = webScraper.fetchAndExtract(url, urlRegistry::register)
+                if (content != null) urlRegistry.register(url) to content else null
             }
 
             if (pageContents.isEmpty()) {
@@ -150,7 +152,7 @@ class Orchestrator(
 
             val prompt = buildPrompt(pageContents)
             val rawResponse = llmClient.generate(prompt, model)
-            val response = parseResponse(rawResponse) ?: return null
+            val response = parseResponse(rawResponse)?.resolveUrls(urlRegistry) ?: return null
 
             val result = extractResult(response)
             if (result != null) return result
@@ -192,6 +194,8 @@ Below are the contents of one or more web pages from this council's website. You
 1. Identify the URL of the committee's dedicated page, OR
 2. Identify links that are likely to lead to the committee's page.
 
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
 ${formatPages(pageContents)}
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -199,7 +203,7 @@ Respond with a single JSON object (no other text). The JSON must have a "type" f
 If you need to follow links to find the committee page, respond with:
 {
   "type": "fetch",
-  "urls": ["https://..."],
+  "urls": ["@1"],
   "reason": "Brief explanation of why you want to fetch these URLs"
 }
 
@@ -208,7 +212,7 @@ Only include URLs that appeared as links in the page content above. Choose the m
 If you found the committee's page URL, respond with:
 {
   "type": "committee_page_found",
-  "url": "https://..."
+  "url": "@1"
 }
 """.trimIndent()
     }
@@ -231,6 +235,8 @@ Below are the contents of one or more web pages. Your job is to either:
 1. Find meetings within the date range that have agenda documents/pages, OR
 2. Identify links that are likely to lead to meeting listings or agendas.
 
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
 ${formatPages(pageContents)}
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -238,7 +244,7 @@ Respond with a single JSON object (no other text). The JSON must have a "type" f
 If you need to follow links, respond with:
 {
   "type": "fetch",
-  "urls": ["https://..."],
+  "urls": ["@1"],
   "reason": "Brief explanation"
 }
 
@@ -251,7 +257,7 @@ If you found meetings, respond with:
     {
       "date": "YYYY-MM-DD",
       "title": "Meeting title",
-      "agendaUrl": "https://... or null if no agenda link found"
+      "agendaUrl": "@1 or null if no agenda link found"
     }
   ]
 }
@@ -278,6 +284,8 @@ Meeting title: ${meeting.title}
 
 Topics of interest: $topicsList
 
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
 ${formatPages(pageContents)}
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -285,7 +293,7 @@ Respond with a single JSON object (no other text). The JSON must have a "type" f
 If you need to follow links to read the full agenda or individual agenda items, respond with:
 {
   "type": "fetch",
-  "urls": ["https://..."],
+  "urls": ["@1"],
   "reason": "Brief explanation"
 }
 
