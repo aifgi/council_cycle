@@ -4,7 +4,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
-import org.jsoup.nodes.Document
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger(WebScraper::class.java)
@@ -27,7 +26,7 @@ class WebScraper(
         }
     }
 
-    suspend fun fetchAndExtract(url: String): Document? {
+    suspend fun fetchAndExtract(url: String): String? {
         val html = fetch(url) ?: return null
         return contentExtractor.extract(html)
     }

@@ -9,13 +9,14 @@ private val logger = LoggerFactory.getLogger(ContentExtractor::class.java)
 
 class ContentExtractor(
     private val mainContentSelectors: List<String> = DEFAULT_MAIN_CONTENT_SELECTORS,
+    private val markdownConverter: AnnotatedMarkdownConverter = AnnotatedMarkdownConverter(),
 ) {
 
-    fun extract(html: String): Document {
+    fun extract(html: String): String {
         val document = Jsoup.parse(html)
         removeInvisibleElements(document)
         val mainContent = extractMainContent(document)
-        return mainContent
+        return markdownConverter.convert(mainContent)
     }
 
     private fun removeInvisibleElements(document: Document) {
