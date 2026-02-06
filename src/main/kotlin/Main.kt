@@ -2,6 +2,7 @@ import config.AppConfig
 import config.loadConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
@@ -26,7 +27,19 @@ fun main(args: Array<String>) {
         single { WebScraper(get()) }
     }
 
-    startKoin {
+    val koinApp = startKoin {
         modules(configModule, scraperModule)
+    }
+
+    val scraper = koinApp.koin.get<WebScraper>()
+
+    runBlocking {
+        for (council in appConfig.councils) {
+            logger.info("Fetching site for council: {}", council.name)
+            val html = scraper.fetch(council.siteUrl)
+            if (html != null) {
+                logger.info("Fetched {} bytes for {}", html.length, council.name)
+            }
+        }
     }
 }
