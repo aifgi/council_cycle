@@ -1,4 +1,4 @@
-package orchestrator
+package scraper
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,4 +52,5 @@ class UrlRegistryTest {
             assertEquals(url, registry.resolve(token))
         }
     }
+
 }

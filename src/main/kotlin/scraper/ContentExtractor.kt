@@ -12,11 +12,11 @@ class ContentExtractor(
     private val markdownConverter: AnnotatedMarkdownConverter = AnnotatedMarkdownConverter(),
 ) {
 
-    fun extract(html: String, baseUrl: String, transformUrl: (String) -> String = { it }): String {
+    fun extract(html: String, baseUrl: String): ConversionResult {
         val document = Jsoup.parse(html, baseUrl)
         removeInvisibleElements(document)
         val mainContent = extractMainContent(document)
-        return markdownConverter.convert(mainContent, transformUrl)
+        return markdownConverter.convert(mainContent)
     }
 
     private fun removeInvisibleElements(document: Document) {

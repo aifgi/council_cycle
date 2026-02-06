@@ -2,6 +2,7 @@ package scraper
 
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -17,7 +18,7 @@ class ContentExtractorTest {
     @Test
     fun `removes script elements`() {
         val html = "<html><body><p>Hello</p><script>alert('x')</script></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Hello")
         assertFalse(result.contains("alert"))
     }
@@ -25,7 +26,7 @@ class ContentExtractorTest {
     @Test
     fun `removes style elements`() {
         val html = "<html><body><style>.x{color:red}</style><p>Content</p></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Content")
         assertFalse(result.contains("color:red"))
     }
@@ -33,7 +34,7 @@ class ContentExtractorTest {
     @Test
     fun `removes noscript and template elements`() {
         val html = "<html><body><noscript>Enable JS</noscript><template><p>T</p></template><p>Visible</p></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Visible")
         assertFalse(result.contains("Enable JS"))
     }
@@ -41,7 +42,7 @@ class ContentExtractorTest {
     @Test
     fun `removes elements with hidden attribute`() {
         val html = "<html><body><p>Visible</p><div hidden>Hidden</div></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Visible")
         assertFalse(result.contains("Hidden"))
     }
@@ -49,7 +50,7 @@ class ContentExtractorTest {
     @Test
     fun `removes elements with display none`() {
         val html = """<html><body><p>Visible</p><div style="display: none">Hidden</div></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Visible")
         assertFalse(result.contains("Hidden"))
     }
@@ -57,7 +58,7 @@ class ContentExtractorTest {
     @Test
     fun `removes elements with visibility hidden`() {
         val html = """<html><body><p>Visible</p><span style="visibility: hidden">Ghost</span></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Visible")
         assertFalse(result.contains("Ghost"))
     }
@@ -65,7 +66,7 @@ class ContentExtractorTest {
     @Test
     fun `removes images`() {
         val html = """<html><body><p>Text</p><img alt="A photo" src="photo.jpg"></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Text")
         assertFalse(result.contains("photo"))
     }
@@ -73,7 +74,7 @@ class ContentExtractorTest {
     @Test
     fun `removes elements with aria-hidden true`() {
         val html = """<html><body><p>Visible</p><span aria-hidden="true">Icon</span></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Visible")
         assertFalse(result.contains("Icon"))
     }
@@ -88,16 +89,17 @@ class ContentExtractorTest {
                 <div hidden>secret</div>
             </body></html>
         """.trimIndent()
-        val result = extractor.extract(html, BASE_URL)
-        assertContains(result, "# Title")
-        assertContains(result, "[a link](https://example.com/link)")
-        assertFalse(result.contains("secret"))
+        val (text, registry) = extractor.extract(html, BASE_URL)
+        assertContains(text, "# Title")
+        assertContains(text, "[a link](@1)")
+        assertEquals("https://example.com/link", registry.resolve("@1"))
+        assertFalse(text.contains("secret"))
     }
 
     @Test
     fun `extracts main element content`() {
         val html = "<html><body><header>Nav</header><main><p>Main content</p></main><footer>Foot</footer></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Main content")
         assertFalse(result.contains("Nav"))
         assertFalse(result.contains("Foot"))
@@ -106,7 +108,7 @@ class ContentExtractorTest {
     @Test
     fun `extracts role=main element content`() {
         val html = """<html><body><div>Side</div><div role="main"><p>Content</p></div></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Content")
         assertFalse(result.contains("Side"))
     }
@@ -114,7 +116,7 @@ class ContentExtractorTest {
     @Test
     fun `extracts #content element`() {
         val html = """<html><body><nav>Nav</nav><div id="content"><p>Body</p></div></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Body")
         assertFalse(result.contains("Nav"))
     }
@@ -122,7 +124,7 @@ class ContentExtractorTest {
     @Test
     fun `extracts #main-content element`() {
         val html = """<html><body><nav>Nav</nav><div id="main-content"><p>Here</p></div></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Here")
         assertFalse(result.contains("Nav"))
     }
@@ -130,7 +132,7 @@ class ContentExtractorTest {
     @Test
     fun `extracts content-area element`() {
         val html = """<html><body><aside>Side</aside><div class="content-area"><p>Area</p></div></body></html>"""
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "Area")
         assertFalse(result.contains("Side"))
     }
@@ -138,7 +140,7 @@ class ContentExtractorTest {
     @Test
     fun `returns full document when no main content found`() {
         val html = "<html><body><div><p>No main element</p></div></body></html>"
-        val result = extractor.extract(html, BASE_URL)
+        val result = extractor.extract(html, BASE_URL).text
         assertContains(result, "No main element")
     }
 
@@ -154,7 +156,7 @@ class ContentExtractorTest {
     fun `uses custom selectors`() {
         val html = """<html><body><div>Other</div><section class="custom"><p>Custom</p></section></body></html>"""
         val customExtractor = ContentExtractor(mainContentSelectors = listOf(".custom"))
-        val result = customExtractor.extract(html, BASE_URL)
+        val result = customExtractor.extract(html, BASE_URL).text
         assertContains(result, "Custom")
         assertFalse(result.contains("Other"))
     }
@@ -168,11 +170,12 @@ class ContentExtractorTest {
                 <ul><li>Item one</li><li>Item two</li></ul>
             </main></body></html>
         """.trimIndent()
-        val result = extractor.extract(html, BASE_URL)
-        assertContains(result, "## Meeting")
-        assertContains(result, "[meeting](https://example.com/meeting)")
-        assertContains(result, "- Item one")
-        assertContains(result, "- Item two")
-        assertTrue(!result.contains("<"))
+        val (text, registry) = extractor.extract(html, BASE_URL)
+        assertContains(text, "## Meeting")
+        assertContains(text, "[meeting](@1)")
+        assertEquals("https://example.com/meeting", registry.resolve("@1"))
+        assertContains(text, "- Item one")
+        assertContains(text, "- Item two")
+        assertTrue(!text.contains("<"))
     }
 }

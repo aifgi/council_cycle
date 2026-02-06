@@ -70,10 +70,10 @@ class Orchestrator(
         committeeName: String,
     ): String? {
         return navigationLoop(
-            startUrls = listOf(startUrl),
+            startUrl = startUrl,
             phaseName = "Phase 1: Find committee page",
             model = lightModel,
-            buildPrompt = { pageContents -> buildPhase1Prompt(councilName, committeeName, pageContents) },
+            buildPrompt = { (url, content) -> buildPhase1Prompt(councilName, committeeName, url, content) },
             extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
         )
     }
@@ -86,11 +86,11 @@ class Orchestrator(
         dateTo: String,
     ): List<Meeting>? {
         return navigationLoop(
-            startUrls = listOf(committeeUrl),
+            startUrl = committeeUrl,
             phaseName = "Phase 2: Find meetings",
             model = lightModel,
-            buildPrompt = { pageContents ->
-                buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, pageContents)
+            buildPrompt = { (url, content) ->
+                buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, url, content)
             },
             extractResult = { response -> (response as? PhaseResponse.MeetingsFound)?.meetings },
         )
@@ -103,11 +103,11 @@ class Orchestrator(
         meeting: Meeting,
     ): PhaseResponse.AgendaTriaged? {
         return navigationLoop(
-            startUrls = listOf(agendaUrl),
+            startUrl = agendaUrl,
             phaseName = "Phase 3: Triage agenda",
             model = lightModel,
-            buildPrompt = { pageContents ->
-                buildPhase3Prompt(councilName, committeeName, meeting, pageContents)
+            buildPrompt = { (url, content) ->
+                buildPhase3Prompt(councilName, committeeName, meeting, url, content)
             },
             extractResult = { response -> response as? PhaseResponse.AgendaTriaged },
         )
@@ -127,32 +127,28 @@ class Orchestrator(
     }
 
     private suspend fun <R> navigationLoop(
-        startUrls: List<String>,
+        startUrl: String,
         phaseName: String,
         model: String,
-        buildPrompt: (List<Pair<String, String>>) -> String,
+        buildPrompt: (Pair<String, String>) -> String,
         extractResult: (PhaseResponse) -> R?,
     ): R? {
-        var urls = startUrls
+        val urlQueue = mutableListOf(startUrl)
 
         for (iteration in 1..maxIterations) {
-            logger.info("{} — iteration {}: fetching {} URL(s)", phaseName, iteration, urls.size)
+            val url = urlQueue.removeFirstOrNull() ?: break
+            logger.info("{} — iteration {}: fetching {}", phaseName, iteration, url)
 
-            val urlRegistry = UrlRegistry()
-
-            val pageContents = urls.mapNotNull { url ->
-                val content = webScraper.fetchAndExtract(url, urlRegistry::register)
-                if (content != null) urlRegistry.register(url) to content else null
+            val conversionResult = webScraper.fetchAndExtract(url)
+            if (conversionResult == null) {
+                logger.warn("{} — fetch failed for {}", phaseName, url)
+                continue
             }
 
-            if (pageContents.isEmpty()) {
-                logger.warn("{} — all fetches failed on iteration {}", phaseName, iteration)
-                return null
-            }
-
-            val prompt = buildPrompt(pageContents)
+            val prompt = buildPrompt(url to conversionResult.text)
             val rawResponse = llmClient.generate(prompt, model)
-            val response = parseResponse(rawResponse)?.resolveUrls(urlRegistry) ?: return null
+            val response = parseResponse(rawResponse)
+                ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
 
             val result = extractResult(response)
             if (result != null) return result
@@ -160,7 +156,7 @@ class Orchestrator(
             when (response) {
                 is PhaseResponse.Fetch -> {
                     logger.info("{} — LLM requests {} more URL(s): {}", phaseName, response.urls.size, response.reason)
-                    urls = response.urls
+                    urlQueue.addAll(response.urls)
                 }
                 else -> {
                     logger.warn("{} — unexpected response type: {}", phaseName, response::class.simpleName)
@@ -173,16 +169,11 @@ class Orchestrator(
         return null
     }
 
-    private fun formatPages(pageContents: List<Pair<String, String>>): String {
-        return pageContents.joinToString("\n\n") { (url, content) ->
-            "--- Page: $url ---\n$content"
-        }
-    }
-
     private fun buildPhase1Prompt(
         councilName: String,
         committeeName: String,
-        pageContents: List<Pair<String, String>>,
+        pageUrl: String,
+        pageContent: String,
     ): String {
         return """
 You are helping find a council committee's page on their website.
@@ -190,13 +181,14 @@ You are helping find a council committee's page on their website.
 Council: $councilName
 Committee: $committeeName
 
-Below are the contents of one or more web pages from this council's website. Your job is to either:
+Below are the contents of a web page from this council's website. Your job is to either:
 1. Identify the URL of the committee's dedicated page, OR
 2. Identify links that are likely to lead to the committee's page.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-${formatPages(pageContents)}
+--- Page: $pageUrl ---
+$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -222,7 +214,8 @@ If you found the committee's page URL, respond with:
         committeeName: String,
         dateFrom: String,
         dateTo: String,
-        pageContents: List<Pair<String, String>>,
+        pageUrl: String,
+        pageContent: String,
     ): String {
         return """
 You are helping find committee meeting agendas.
@@ -231,13 +224,14 @@ Council: $councilName
 Committee: $committeeName
 Date range: $dateFrom to $dateTo
 
-Below are the contents of one or more web pages. Your job is to either:
+Below are the contents of a web page. Your job is to either:
 1. Find meetings within the date range that have agenda documents/pages, OR
 2. Identify links that are likely to lead to meeting listings or agendas.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-${formatPages(pageContents)}
+--- Page: $pageUrl ---
+$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -270,7 +264,8 @@ Only include meetings within the date range $dateFrom to $dateTo.
         councilName: String,
         committeeName: String,
         meeting: Meeting,
-        pageContents: List<Pair<String, String>>,
+        pageUrl: String,
+        pageContent: String,
     ): String {
         val topicsList = TOPICS.joinToString(", ")
 
@@ -286,7 +281,8 @@ Topics of interest: $topicsList
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-${formatPages(pageContents)}
+--- Page: $pageUrl ---
+$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 

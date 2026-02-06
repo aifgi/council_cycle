@@ -55,11 +55,11 @@ data class Scheme(
     val committeeName: String,
 )
 
-fun PhaseResponse.resolveUrls(registry: UrlRegistry): PhaseResponse = when (this) {
-    is PhaseResponse.Fetch -> copy(urls = urls.map { registry.resolve(it) })
-    is PhaseResponse.CommitteePageFound -> copy(url = registry.resolve(url))
+fun PhaseResponse.resolveUrls(resolve: (String) -> String): PhaseResponse = when (this) {
+    is PhaseResponse.Fetch -> copy(urls = urls.map { resolve(it) })
+    is PhaseResponse.CommitteePageFound -> copy(url = resolve(url))
     is PhaseResponse.MeetingsFound -> copy(
-        meetings = meetings.map { it.copy(agendaUrl = it.agendaUrl?.let { url -> registry.resolve(url) }) }
+        meetings = meetings.map { it.copy(agendaUrl = it.agendaUrl?.let { url -> resolve(url) }) }
     )
     is PhaseResponse.AgendaTriaged -> this
     is PhaseResponse.AgendaAnalyzed -> this

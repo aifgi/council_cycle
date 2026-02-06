@@ -5,12 +5,13 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AnnotatedMarkdownConverterTest {
 
     private val converter = AnnotatedMarkdownConverter()
 
-    private fun convert(html: String): String = converter.convert(Jsoup.parse(html))
+    private fun convert(html: String): String = converter.convert(Jsoup.parse(html)).text
 
     @Test
     fun `converts headings`() {
@@ -29,15 +30,17 @@ class AnnotatedMarkdownConverterTest {
 
     @Test
     fun `converts links with href`() {
-        val result = convert("""<p>Visit <a href="https://example.com/page">this page</a></p>""")
-        assertContains(result, "[this page](https://example.com/page)")
+        val (text, registry) = converter.convert(Jsoup.parse("""<p>Visit <a href="https://example.com/page">this page</a></p>"""))
+        assertContains(text, "[this page](@1)")
+        assertEquals("https://example.com/page", registry.resolve("@1"))
     }
 
     @Test
     fun `resolves relative links when base url is set`() {
         val doc = Jsoup.parse("""<p>See <a href="details.aspx?id=1">details</a></p>""", "https://example.com/list")
-        val result = converter.convert(doc)
-        assertContains(result, "[details](https://example.com/details.aspx?id=1)")
+        val (text, registry) = converter.convert(doc)
+        assertContains(text, "[details](@1)")
+        assertEquals("https://example.com/details.aspx?id=1", registry.resolve("@1"))
     }
 
     @Test
@@ -186,7 +189,7 @@ class AnnotatedMarkdownConverterTest {
         val result = convert(html)
         assertContains(result, "# Council Meeting")
         assertContains(result, "**Monday**")
-        assertContains(result, "[Town Hall](https://example.com/venue)")
+        assertContains(result, "[Town Hall](@1)")
         assertContains(result, "## Agenda")
         assertContains(result, "1. Opening")
         assertContains(result, "2. Minutes")

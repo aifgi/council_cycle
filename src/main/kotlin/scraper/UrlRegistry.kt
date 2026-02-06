@@ -1,4 +1,6 @@
-package orchestrator
+package scraper
+
+data class ConversionResult(val text: String, val urlRegistry: UrlRegistry)
 
 class UrlRegistry {
     private val urlToToken = mutableMapOf<String, String>()
