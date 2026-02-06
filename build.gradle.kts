@@ -34,7 +34,16 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("real-llm")
+    }
+}
+
+tasks.register<Test>("realLlmTest") {
+    useJUnitPlatform {
+        includeTags("real-llm")
+    }
+    environment("ANTHROPIC_API_KEY", System.getenv("ANTHROPIC_API_KEY"))
 }
 
 application {

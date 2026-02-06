@@ -11,7 +11,7 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.MockLlmClient
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+import org.junit.jupiter.api.Tag
 import processor.ResultProcessor
 import scraper.ContentExtractor
 import scraper.WebScraper
@@ -90,7 +90,7 @@ class EndToEndTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+    @Tag("real-llm")
     fun `end-to-end with real LLM`() = runBlocking {
         val apiKey = System.getenv("ANTHROPIC_API_KEY")
         val anthropicClient = AnthropicOkHttpClient.builder()
