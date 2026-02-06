@@ -20,6 +20,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
     implementation("com.charleskorn.kaml:kaml:0.67.0")
 
+    implementation("io.ktor:ktor-client-core:3.0.3")
+    implementation("io.ktor:ktor-client-cio:3.0.3")
+
     testImplementation(kotlin("test"))
 }
 
