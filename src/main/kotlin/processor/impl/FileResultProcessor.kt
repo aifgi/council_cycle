@@ -1,7 +1,8 @@
-package processor
+package processor.impl
 
 import orchestrator.Scheme
 import org.slf4j.LoggerFactory
+import processor.ResultProcessor
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText

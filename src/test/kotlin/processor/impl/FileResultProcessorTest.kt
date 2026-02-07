@@ -1,7 +1,7 @@
-package processor
+package processor.impl
 
 import orchestrator.Scheme
-import processor.FileResultProcessor.Companion.sanitizeFilename
+import processor.impl.FileResultProcessor.Companion.sanitizeFilename
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,7 +1,8 @@
-package processor
+package processor.impl
 
 import orchestrator.Scheme
 import org.slf4j.LoggerFactory
+import processor.ResultProcessor
 
 class LoggingResultProcessor : ResultProcessor {
 

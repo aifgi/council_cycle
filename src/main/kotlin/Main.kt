@@ -8,9 +8,10 @@ import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
 import orchestrator.Orchestrator
-import processor.FileResultProcessor
-import processor.LoggingResultProcessor
 import processor.ResultProcessor
+import processor.impl.CompositeResultProcessor
+import processor.impl.FileResultProcessor
+import processor.impl.LoggingResultProcessor
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
@@ -58,17 +59,14 @@ fun main(args: Array<String>) {
 
     val orchestratorModule = module {
         single<ResultProcessor> {
-            val loggingProcessor = LoggingResultProcessor()
-            val outputDir = appConfig.outputDir
-            if (outputDir != null) {
-                val fileProcessor = FileResultProcessor(Paths.get(outputDir))
-                ResultProcessor { councilName, committeeName, schemes ->
-                    loggingProcessor.process(councilName, committeeName, schemes)
-                    fileProcessor.process(councilName, committeeName, schemes)
+            val processors = buildList {
+                add(LoggingResultProcessor())
+                val outputDir = appConfig.outputDir
+                if (outputDir != null) {
+                    add(FileResultProcessor(Paths.get(outputDir)))
                 }
-            } else {
-                loggingProcessor
             }
+            CompositeResultProcessor(processors)
         }
         single { Orchestrator(get(), get(), get()) }
     }

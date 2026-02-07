@@ -9,7 +9,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import llm.MockLlmClient
-import processor.LoggingResultProcessor
+import processor.impl.LoggingResultProcessor
 import processor.ResultProcessor
 import scraper.ContentExtractor
 import scraper.WebScraper
