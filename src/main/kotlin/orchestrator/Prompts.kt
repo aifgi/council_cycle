@@ -118,7 +118,7 @@ Excluded topics (do not include): $excludedList
 
 DOCUMENT FETCHING RULES:
 - Only fetch item-specific documents (reports, minutes, decisions) linked to relevant items
-- NEVER fetch full agenda packs or bundled PDFs covering all items
+- NEVER fetch full agenda packs, public reports pack or bundled PDFs covering all items
 - If only a full pack exists, work with the page context alone
 
 PROCESS:
