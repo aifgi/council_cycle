@@ -13,8 +13,16 @@ class AnnotatedMarkdownConverter {
         urlRegistry = UrlRegistry()
         val sb = StringBuilder()
         convertChildren(document.body(), sb)
-        val text = sb.toString().replace(Regex("\n{3,}"), "\n\n").trim()
-        return ConversionResult(text, urlRegistry)
+        return ConversionResult(sb.toString().trim(), urlRegistry)
+    }
+
+    private fun ensureBlankLine(sb: StringBuilder) {
+        if (sb.isEmpty()) return
+        if (!sb.endsWith("\n")) {
+            sb.append("\n\n")
+        } else if (!sb.endsWith("\n\n")) {
+            sb.append("\n")
+        }
     }
 
     private fun convertChildren(element: Element, sb: StringBuilder) {
@@ -66,23 +74,23 @@ class AnnotatedMarkdownConverter {
                 convertChildren(element, sb)
                 sb.append("`")
             }
-            "hr" -> sb.append("\n\n---\n\n")
+            "hr" -> { ensureBlankLine(sb); sb.append("---"); ensureBlankLine(sb) }
             else -> convertChildren(element, sb)
         }
     }
 
     private fun appendHeading(element: Element, sb: StringBuilder, prefix: String) {
-        sb.append("\n\n")
+        ensureBlankLine(sb)
         sb.append(prefix)
         sb.append(" ")
         convertChildren(element, sb)
-        sb.append("\n\n")
+        ensureBlankLine(sb)
     }
 
     private fun appendBlock(element: Element, sb: StringBuilder) {
-        sb.append("\n\n")
+        ensureBlankLine(sb)
         convertChildren(element, sb)
-        sb.append("\n\n")
+        ensureBlankLine(sb)
     }
 
     private fun appendLink(element: Element, sb: StringBuilder) {
@@ -99,7 +107,7 @@ class AnnotatedMarkdownConverter {
     }
 
     private fun appendList(element: Element, sb: StringBuilder, ordered: Boolean) {
-        sb.append("\n\n")
+        ensureBlankLine(sb)
         val items = element.children().filter { it.tagName() == "li" }
         for ((index, item) in items.withIndex()) {
             val prefix = if (ordered) "${index + 1}. " else "- "
@@ -107,7 +115,7 @@ class AnnotatedMarkdownConverter {
             convertChildren(item, sb)
             sb.append("\n")
         }
-        sb.append("\n")
+        ensureBlankLine(sb)
     }
 
     private fun appendTable(element: Element, sb: StringBuilder) {
@@ -119,7 +127,8 @@ class AnnotatedMarkdownConverter {
             if (headers.isNotEmpty()) allRows.drop(1) else allRows
         }
 
-        sb.append("\n\n[Table]\n")
+        ensureBlankLine(sb)
+        sb.append("[Table]\n")
 
         for ((rowIndex, row) in rows.withIndex()) {
             val cells = row.select("td, th")
@@ -136,11 +145,11 @@ class AnnotatedMarkdownConverter {
             }
             sb.append("\n")
         }
-        sb.append("\n")
+        ensureBlankLine(sb)
     }
 
     private fun appendBlockquote(element: Element, sb: StringBuilder) {
-        sb.append("\n\n")
+        ensureBlankLine(sb)
         val content = StringBuilder()
         convertChildren(element, content)
         content.toString().trim().lines().forEach { line ->
@@ -148,12 +157,14 @@ class AnnotatedMarkdownConverter {
             sb.append(line)
             sb.append("\n")
         }
-        sb.append("\n")
+        ensureBlankLine(sb)
     }
 
     private fun appendPreformatted(element: Element, sb: StringBuilder) {
-        sb.append("\n\n```\n")
+        ensureBlankLine(sb)
+        sb.append("```\n")
         sb.append(element.wholeText())
-        sb.append("\n```\n\n")
+        sb.append("\n```")
+        ensureBlankLine(sb)
     }
 }
