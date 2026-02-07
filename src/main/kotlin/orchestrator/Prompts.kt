@@ -28,7 +28,7 @@ Below are the committee names and the contents of a web page from this council's
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-Respond with a single JSON object (no other text). The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 If you need to follow links to find the committee pages, respond with:
 {
@@ -68,7 +68,7 @@ Below are the committee name, date range, and the contents of a web page. Your j
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-Respond with a single JSON object (no other text). The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 If you need to follow links, respond with:
 {
@@ -132,7 +132,7 @@ Work iteratively through the agenda:
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-Respond with a single JSON object (no other text). The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 If you need to fetch more documents to complete your analysis (e.g. reports, minutes, decision documents), respond with:
 {
@@ -192,7 +192,7 @@ You are analyzing pre-extracted content from a council committee meeting agenda 
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
 
-Respond with a single JSON object (no other text). The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 Analyze the content above and identify any schemes or items related to the topics listed.
 
