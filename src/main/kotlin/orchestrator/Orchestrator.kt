@@ -56,7 +56,7 @@ class Orchestrator(
                     logger.info("No agenda URL for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val triage = triageAgenda(meeting.agendaUrl)
+                val triage = triageAgenda(meeting.agendaUrl, committee, meeting.date)
                 if (triage == null || !triage.relevant || triage.items.isEmpty()) {
                     logger.info("Agenda not relevant for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
@@ -108,6 +108,8 @@ class Orchestrator(
 
     internal suspend fun triageAgenda(
         agendaUrl: String,
+        committeeName: String,
+        meetingDate: String,
     ): PhaseResponse.AgendaTriaged? {
         val urlQueue = mutableListOf(agendaUrl)
         val accumulatedItems = mutableMapOf<String, TriagedItem>()
@@ -123,7 +125,7 @@ class Orchestrator(
                 continue
             }
 
-            val prompt = buildPhase3Prompt(agendaUrl, conversionResult.text, fetchReason, accumulatedItems.values)
+            val prompt = buildPhase3Prompt(committeeName, meetingDate, conversionResult.text, fetchReason, accumulatedItems.values)
             logger.trace("LLM Prompt {}", prompt.user)
             val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
             logger.debug("LLM response {}", rawResponse)

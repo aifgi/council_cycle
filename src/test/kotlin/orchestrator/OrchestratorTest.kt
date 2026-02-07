@@ -131,7 +131,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
@@ -149,7 +149,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertEquals(false, result?.relevant)
         assertEquals(0, result?.items?.size)
@@ -174,7 +174,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertEquals(2, callCount)
         assertEquals(true, result?.relevant)
@@ -204,7 +204,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertTrue(secondUserPrompt!!.contains("Need to read the full cycle lane report"))
     }
@@ -230,7 +230,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertTrue(secondUserPrompt!!.contains("Traffic Filter"))
         assertTrue(secondUserPrompt!!.contains("Existing extract"))
@@ -255,7 +255,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertEquals(1, result?.items?.size)
         assertEquals("Updated detailed extract from report", result?.items?.first()?.extract)
@@ -271,7 +271,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3, maxPhase3Iterations = 2)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
@@ -290,7 +290,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
 
         assertNull(result)
     }

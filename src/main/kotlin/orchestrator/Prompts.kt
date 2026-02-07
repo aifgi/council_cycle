@@ -99,7 +99,8 @@ Only include meetings within the date range specified above.
 }
 
 fun buildPhase3Prompt(
-    agendaUrl: String,
+    committeeName: String,
+    meetingDate: String,
     pageContent: String,
     fetchReason: String? = null,
     accumulatedItems: Collection<TriagedItem> = emptyList(),
@@ -110,7 +111,7 @@ fun buildPhase3Prompt(
     val system = """
 You are triaging a council committee meeting agenda to identify items related to transport and planning schemes. Your goal is to build detailed extracts for each relevant item.
 
-IMPORTANT: You are analyzing the agenda at $agendaUrl. Stay focused on this agenda only. Do NOT navigate back to committee pages, meeting listings, or other meetings' agendas. Only fetch links that are documents related to items on THIS agenda (e.g. item-specific reports, minutes, decision documents).
+IMPORTANT: Stay focused on this agenda only. Do NOT navigate back to committee pages, meeting listings, or other meetings' agendas. Only fetch links that are documents related to items on THIS agenda (e.g. item-specific reports, minutes, decision documents).
 
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
@@ -165,6 +166,8 @@ If no relevant items are found, respond with:
 """.trimIndent()
 
     val userParts = mutableListOf<String>()
+
+    userParts.add("This is the agenda of a meeting of $committeeName on $meetingDate.")
 
     if (fetchReason != null) {
         userParts.add("You previously requested this page because: $fetchReason")
