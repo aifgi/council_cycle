@@ -48,6 +48,7 @@ fun main(args: Array<String>) {
         single<AnthropicClientAsync> {
             AnthropicOkHttpClientAsync.builder()
                 .apiKey(apiKey)
+                .maxRetries(5)
                 .build()
         }
         single<LlmClient> { ClaudeLlmClient(get()) }
