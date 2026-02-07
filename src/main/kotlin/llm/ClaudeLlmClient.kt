@@ -40,8 +40,9 @@ class ClaudeLlmClient(
             } catch (e: RateLimitException) {
                 lastException = e
                 if (attempt < retryDelaysMs.size) {
-                    val jitterMs = (0..5_000L).random()
-                    val delayMs = retryDelaysMs[attempt] + jitterMs
+                    val baseDelay = retryDelaysMs[attempt]
+                    val jitterMs = (0..baseDelay / 10).random()
+                    val delayMs = baseDelay + jitterMs
                     logger.warn(
                         "Rate limited after SDK retries exhausted. " +
                             "Application-level retry {}/{}, waiting {}s",
