@@ -295,7 +295,7 @@ If you need to follow links to read the full agenda or individual agenda items, 
   "reason": "Brief explanation"
 }
 
-Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links.
+Only include URLs that appeared as links in the page content above. Choose the most relevant 1-3 links. Do not follow links to PDF documents if the agenda content is already available on the page.
 
 Once you have seen enough of the agenda, determine whether it contains any items related to the topics listed above.
 
