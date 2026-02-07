@@ -36,7 +36,7 @@ class OrchestratorTest {
     @Test
     fun `phase 1 returns URL when found immediately`() = runBlocking {
         val scraper = webScraper(mapOf("https://council.example.com" to "<html><body><p>Committees page</p></body></html>"))
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -55,7 +55,7 @@ class OrchestratorTest {
             ),
         )
         var callCount = 0
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             callCount++
             if (callCount == 1) {
                 """{"type":"fetch","urls":["https://council.example.com/committees"],"reason":"Following committees link"}"""
@@ -77,7 +77,7 @@ class OrchestratorTest {
         val scraper = webScraper(
             mapOf("https://council.example.com/planning" to "<html><body><p>Meetings</p></body></html>"),
         )
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -100,7 +100,7 @@ class OrchestratorTest {
             ),
         )
         var callCount = 0
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             callCount++
             if (callCount == 1) {
                 """{"type":"fetch","urls":["https://council.example.com/planning/meetings"],"reason":"Following meetings link"}"""
@@ -125,7 +125,7 @@ class OrchestratorTest {
         val scraper = webScraper(
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Agenda items</p></body></html>"),
         )
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"agenda_triaged","relevant":true,"extract":"Item 1: High Street Cycle Lane - new protected lane"}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -141,7 +141,7 @@ class OrchestratorTest {
         val scraper = webScraper(
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Budget discussion</p></body></html>"),
         )
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"agenda_triaged","relevant":false}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -156,7 +156,7 @@ class OrchestratorTest {
     @Test
     fun `phase 4 returns schemes from extract`() = runBlocking {
         val scraper = webScraper(emptyMap())
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"agenda_analyzed","schemes":[{"title":"High Street Cycle Lane","topic":"cycle lanes","summary":"New protected lane"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -178,7 +178,7 @@ class OrchestratorTest {
     @Test
     fun `stops at max iterations`() = runBlocking {
         val scraper = webScraper(mapOf("https://example.com" to "<html><body><p>Page</p></body></html>"))
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             """{"type":"fetch","urls":["https://example.com"],"reason":"Need more"}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 2)
@@ -191,7 +191,7 @@ class OrchestratorTest {
     @Test
     fun `returns null when all fetches fail`() = runBlocking {
         val scraper = webScraper(emptyMap())
-        val llm = MockLlmClient { _ -> """{"type":"committee_page_found","url":"https://x.com"}""" }
+        val llm = MockLlmClient { _, _ -> """{"type":"committee_page_found","url":"https://x.com"}""" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findCommitteePage("https://missing.example.com", "Planning")
@@ -202,7 +202,7 @@ class OrchestratorTest {
     @Test
     fun `returns null on malformed LLM response`() = runBlocking {
         val scraper = webScraper(mapOf("https://example.com" to "<html><body><p>Page</p></body></html>"))
-        val llm = MockLlmClient { _ -> "this is not json" }
+        val llm = MockLlmClient { _, _ -> "this is not json" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findCommitteePage("https://example.com", "Planning")
@@ -220,9 +220,9 @@ class OrchestratorTest {
                     """<html><body><a href="https://council.example.com/committees">Committees</a></body></html>""",
             ),
         )
-        val llm = MockLlmClient { prompt ->
-            // The prompt should contain @N tokens in markdown links instead of full URLs
-            val linkToken = Regex("""\[Committees]\((@\d+)\)""").find(prompt)!!.groupValues[1]
+        val llm = MockLlmClient { _, userPrompt ->
+            // The user prompt (page content) should contain @N tokens in markdown links instead of full URLs
+            val linkToken = Regex("""\[Committees]\((@\d+)\)""").find(userPrompt)!!.groupValues[1]
             """{"type":"committee_page_found","url":"$linkToken"}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
@@ -245,7 +245,7 @@ class OrchestratorTest {
             ),
         )
         var callCount = 0
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             callCount++
             when (callCount) {
                 1 -> """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""

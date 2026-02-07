@@ -2,8 +2,10 @@ package llm
 
 import com.anthropic.client.AnthropicClientAsync
 import com.anthropic.errors.RateLimitException
+import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.Model
+import com.anthropic.models.messages.TextBlockParam
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.await
 import org.slf4j.LoggerFactory
@@ -15,10 +17,18 @@ class ClaudeLlmClient(
 
     private val logger = LoggerFactory.getLogger(ClaudeLlmClient::class.java)
 
-    override suspend fun generate(prompt: String, model: String): String {
+    override suspend fun generate(systemPrompt: String, userPrompt: String, model: String): String {
         val params = MessageCreateParams.builder()
             .maxTokens(4096L)
-            .addUserMessage(prompt)
+            .systemOfTextBlockParams(
+                listOf(
+                    TextBlockParam.builder()
+                        .text(systemPrompt)
+                        .cacheControl(CacheControlEphemeral.builder().build())
+                        .build(),
+                ),
+            )
+            .addUserMessage(userPrompt)
             .model(Model.of(model))
             .build()
 

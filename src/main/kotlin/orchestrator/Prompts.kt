@@ -1,5 +1,7 @@
 package orchestrator
 
+data class SplitPrompt(val system: String, val user: String)
+
 val TOPICS = listOf(
     "cycle lanes",
     "traffic filters",
@@ -10,8 +12,8 @@ val TOPICS = listOf(
 fun buildPhase1Prompt(
     committeeName: String,
     pageContent: String,
-): String {
-    return """
+): SplitPrompt {
+    val system = """
 You are helping find a council committee's page on their website.
 
 Committee: $committeeName
@@ -21,8 +23,6 @@ Below are the contents of a web page from this council's website. Your job is to
 2. Identify links that are likely to lead to the committee's page.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
-
-$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -41,6 +41,8 @@ If you found the committee's page URL, respond with:
   "url": "@1"
 }
 """.trimIndent()
+
+    return SplitPrompt(system, pageContent)
 }
 
 fun buildPhase2Prompt(
@@ -48,8 +50,8 @@ fun buildPhase2Prompt(
     dateFrom: String,
     dateTo: String,
     pageContent: String,
-): String {
-    return """
+): SplitPrompt {
+    val system = """
 You are helping find committee meeting agendas.
 
 Committee: $committeeName
@@ -60,8 +62,6 @@ Below are the contents of a web page. Your job is to either:
 2. Identify links that are likely to lead to meeting listings or agendas.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
-
-$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -88,21 +88,21 @@ If you found meetings, respond with:
 
 Only include meetings within the date range $dateFrom to $dateTo.
 """.trimIndent()
+
+    return SplitPrompt(system, pageContent)
 }
 
 fun buildPhase3Prompt(
     pageContent: String,
-): String {
+): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
 
-    return """
+    val system = """
 You are triaging a council committee meeting agenda to check if it contains items related to transport and planning schemes.
 
 Topics of interest: $topicsList
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
-
-$pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -132,20 +132,19 @@ If no relevant items are found, respond with:
   "relevant": false
 }
 """.trimIndent()
+
+    return SplitPrompt(system, pageContent)
 }
 
 fun buildPhase4Prompt(
     extract: String,
-): String {
+): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
 
-    return """
+    val system = """
 You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
 
 Topics of interest: $topicsList
-
---- Extracted content ---
-$extract
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
@@ -164,4 +163,6 @@ Analyze the content above and identify any schemes or items related to the topic
 
 If no relevant items are found, return an empty schemes array: {"type": "agenda_analyzed", "schemes": []}
 """.trimIndent()
+
+    return SplitPrompt(system, extract)
 }

@@ -57,7 +57,7 @@ class ClaudeLlmClientTest {
             server.start()
 
             val client = buildClient(server)
-            val result = client.generate("Say hello", "claude-sonnet-4-5-20250929")
+            val result = client.generate("System instructions", "Say hello", "claude-sonnet-4-5-20250929")
 
             assertEquals("Hello from Claude", result)
         } finally {
@@ -74,7 +74,7 @@ class ClaudeLlmClientTest {
             server.start()
 
             val client = buildClient(server, retryDelaysMs = listOf(10L, 10L, 10L))
-            val result = client.generate("Say hello", "claude-sonnet-4-5-20250929")
+            val result = client.generate("System instructions", "Say hello", "claude-sonnet-4-5-20250929")
 
             assertEquals("Hello from Claude", result)
             assertEquals(2, server.requestCount)
@@ -94,7 +94,7 @@ class ClaudeLlmClientTest {
             val client = buildClient(server, retryDelaysMs = listOf(10L, 10L, 10L))
 
             assertFailsWith<RateLimitException> {
-                client.generate("Say hello", "claude-sonnet-4-5-20250929")
+                client.generate("System instructions", "Say hello", "claude-sonnet-4-5-20250929")
             }
             assertEquals(4, server.requestCount)
         } finally {

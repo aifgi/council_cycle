@@ -59,7 +59,7 @@ class EndToEndTest {
     @Test
     fun `end-to-end with mock LLM`() = runBlocking {
         var callCount = 0
-        val llm = MockLlmClient { _ ->
+        val llm = MockLlmClient { _, _ ->
             callCount++
             when (callCount) {
                 // Phase 1: CommitteeStructure → find committee page

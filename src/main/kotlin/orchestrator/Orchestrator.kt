@@ -113,7 +113,7 @@ class Orchestrator(
     ): List<Scheme>? {
         logger.info("Phase 4: Analyzing extract for meeting '{}' on {}", meeting.title, meeting.date)
         val prompt = buildPhase4Prompt(extract)
-        val rawResponse = llmClient.generate(prompt, heavyModel)
+        val rawResponse = llmClient.generate(prompt.system, prompt.user, heavyModel)
         val response = parseResponse(rawResponse) ?: return null
         return (response as? PhaseResponse.AgendaAnalyzed)?.schemes?.map {
             it.copy(meetingDate = meeting.date, committeeName = committeeName)
@@ -124,7 +124,7 @@ class Orchestrator(
         startUrl: String,
         phaseName: String,
         model: String,
-        buildPrompt: (String) -> String,
+        buildPrompt: (String) -> SplitPrompt,
         extractResult: (PhaseResponse) -> R?,
     ): R? {
         val urlQueue = mutableListOf(startUrl)
@@ -140,8 +140,8 @@ class Orchestrator(
             }
 
             val prompt = buildPrompt(conversionResult.text)
-            logger.trace("LLM Prompt {}", prompt)
-            val rawResponse = llmClient.generate(prompt, model)
+            logger.trace("LLM Prompt {}", prompt.user)
+            val rawResponse = llmClient.generate(prompt.system, prompt.user, model)
             logger.debug("LLM response {}", rawResponse)
             val response = parseResponse(rawResponse)
                 ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
