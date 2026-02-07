@@ -100,7 +100,7 @@ Only include meetings within the date range specified above.
 fun buildPhase3Prompt(
     pageContent: String,
     fetchReason: String? = null,
-    accumulatedItems: List<TriagedItem> = emptyList(),
+    accumulatedItems: Collection<TriagedItem> = emptyList(),
 ): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
     val excludedList = EXCLUDED_TOPICS.joinToString(", ")

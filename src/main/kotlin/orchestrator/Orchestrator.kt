@@ -110,7 +110,7 @@ class Orchestrator(
         agendaUrl: String,
     ): PhaseResponse.AgendaTriaged? {
         val urlQueue = mutableListOf(agendaUrl)
-        var accumulatedItems = listOf<TriagedItem>()
+        val accumulatedItems = mutableMapOf<String, TriagedItem>()
         var fetchReason: String? = null
 
         for (iteration in 1..maxPhase3Iterations) {
@@ -123,7 +123,7 @@ class Orchestrator(
                 continue
             }
 
-            val prompt = buildPhase3Prompt(conversionResult.text, fetchReason, accumulatedItems)
+            val prompt = buildPhase3Prompt(conversionResult.text, fetchReason, accumulatedItems.values)
             logger.trace("LLM Prompt {}", prompt.user)
             val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
             logger.debug("LLM response {}", rawResponse)
@@ -132,11 +132,11 @@ class Orchestrator(
 
             when (response) {
                 is PhaseResponse.AgendaTriaged -> {
-                    val allItems = mergeItems(accumulatedItems, response.items)
-                    return response.copy(items = allItems)
+                    response.items.associateByTo(accumulatedItems) { it.title }
+                    return response.copy(items = accumulatedItems.values)
                 }
                 is PhaseResponse.AgendaFetch -> {
-                    accumulatedItems = mergeItems(accumulatedItems, response.items)
+                    response.items.associateByTo(accumulatedItems) { it.title }
                     fetchReason = response.reason
                     urlQueue.addAll(response.urls)
                     logger.info(
@@ -164,19 +164,11 @@ class Orchestrator(
                 "Phase 3: Triage agenda — max iterations ({}) reached, returning {} accumulated items",
                 maxPhase3Iterations, accumulatedItems.size,
             )
-            return PhaseResponse.AgendaTriaged(relevant = true, items = accumulatedItems)
+            return PhaseResponse.AgendaTriaged(relevant = true, items = accumulatedItems.values)
         }
 
         logger.warn("Phase 3: Triage agenda — max iterations ({}) reached with no results", maxPhase3Iterations)
         return null
-    }
-
-    private fun mergeItems(existing: List<TriagedItem>, new: List<TriagedItem>): List<TriagedItem> {
-        val merged = existing.associateBy { it.title }.toMutableMap()
-        for (item in new) {
-            merged[item.title] = item
-        }
-        return merged.values.toList()
     }
 
     internal suspend fun analyzeExtract(

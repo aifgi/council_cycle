@@ -135,8 +135,8 @@ class OrchestratorTest {
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
-        assertEquals("High Street Cycle Lane", result?.items?.get(0)?.title)
-        assertEquals("Item 1: High Street Cycle Lane - new protected lane", result?.items?.get(0)?.extract)
+        assertEquals("High Street Cycle Lane", result?.items?.first()?.title)
+        assertEquals("Item 1: High Street Cycle Lane - new protected lane", result?.items?.first()?.extract)
     }
 
     @Test
@@ -258,7 +258,7 @@ class OrchestratorTest {
         val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
 
         assertEquals(1, result?.items?.size)
-        assertEquals("Updated detailed extract from report", result?.items?.get(0)?.extract)
+        assertEquals("Updated detailed extract from report", result?.items?.first()?.extract)
     }
 
     @Test
@@ -275,7 +275,7 @@ class OrchestratorTest {
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
-        assertEquals("Cycle Lane", result?.items?.get(0)?.title)
+        assertEquals("Cycle Lane", result?.items?.first()?.title)
     }
 
     @Test

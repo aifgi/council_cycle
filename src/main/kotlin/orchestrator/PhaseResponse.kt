@@ -37,7 +37,7 @@ sealed interface PhaseResponse {
     @SerialName("agenda_triaged")
     data class AgendaTriaged(
         val relevant: Boolean,
-        val items: List<TriagedItem> = emptyList(),
+        val items: Collection<TriagedItem> = emptyList(),
     ) : PhaseResponse
 
     @Serializable
