@@ -3,7 +3,10 @@ package config
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AppConfig(val councils: List<CouncilConfig>)
+data class AppConfig(
+    val councils: List<CouncilConfig>,
+    val outputDir: String? = null,
+)
 
 @Serializable
 data class CouncilConfig(

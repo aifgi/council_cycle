@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
 import orchestrator.Orchestrator
+import processor.FileResultProcessor
 import processor.LoggingResultProcessor
 import processor.ResultProcessor
 import org.koin.core.context.startKoin
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory
 import scraper.ContentExtractor
 import scraper.WebScraper
 import java.io.File
+import java.nio.file.Paths
 
 private val logger = LoggerFactory.getLogger("Main")
 
@@ -55,7 +57,19 @@ fun main(args: Array<String>) {
     }
 
     val orchestratorModule = module {
-        single<ResultProcessor> { LoggingResultProcessor() }
+        single<ResultProcessor> {
+            val loggingProcessor = LoggingResultProcessor()
+            val outputDir = appConfig.outputDir
+            if (outputDir != null) {
+                val fileProcessor = FileResultProcessor(Paths.get(outputDir))
+                ResultProcessor { councilName, committeeName, schemes ->
+                    loggingProcessor.process(councilName, committeeName, schemes)
+                    fileProcessor.process(councilName, committeeName, schemes)
+                }
+            } else {
+                loggingProcessor
+            }
+        }
         single { Orchestrator(get(), get(), get()) }
     }
 
