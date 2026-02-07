@@ -155,6 +155,25 @@ class AnnotatedMarkdownConverterTest {
     }
 
     @Test
+    fun `converts links inside table cells`() {
+        val html = """
+            <table>
+                <thead><tr><th>Item</th><th>Details</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><a href="https://example.com/doc.pdf">Report PDF</a></td>
+                        <td>Some description</td>
+                    </tr>
+                </tbody>
+            </table>
+        """.trimIndent()
+        val (text, registry) = converter.convert(Jsoup.parse(html))
+        assertContains(text, "[Item] [Report PDF](@1)")
+        assertEquals("https://example.com/doc.pdf", registry.resolve("@1"))
+        assertContains(text, "[Details] Some description")
+    }
+
+    @Test
     fun `strips all html tags`() {
         val html = """
             <div class="wrapper">

@@ -139,7 +139,9 @@ class AnnotatedMarkdownConverter {
                 } else {
                     "Column ${colIndex + 1}"
                 }
-                val value = cell.text().trim()
+                val cellContent = StringBuilder()
+                convertChildren(cell, cellContent)
+                val value = cellContent.toString().trim()
                 if (colIndex > 0) sb.append(" |")
                 sb.append(" [$columnLabel] $value")
             }
