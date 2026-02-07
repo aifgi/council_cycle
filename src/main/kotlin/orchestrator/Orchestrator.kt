@@ -233,7 +233,7 @@ class Orchestrator(
             json.decodeFromString<PhaseResponse>(jsonString)
         } catch (e: Exception) {
             logger.error("Failed to parse LLM response: {}", e.message)
-            logger.debug("Raw LLM response:\n{}", raw)
+            logger.error("Raw LLM response:\n{}", raw)
             null
         }
     }
