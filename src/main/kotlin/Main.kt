@@ -1,3 +1,4 @@
+import com.anthropic.client.AnthropicClientAsync
 import com.anthropic.client.okhttp.AnthropicOkHttpClientAsync
 import config.AppConfig
 import config.loadConfig
@@ -44,7 +45,7 @@ fun main(args: Array<String>) {
     }
 
     val llmModule = module {
-        single {
+        single<AnthropicClientAsync> {
             AnthropicOkHttpClientAsync.builder()
                 .apiKey(apiKey)
                 .build()
@@ -63,9 +64,15 @@ fun main(args: Array<String>) {
 
     val orchestrator = koinApp.koin.get<Orchestrator>()
 
-    runBlocking {
-        for (council in appConfig.councils) {
-            orchestrator.processCouncil(council)
+    try {
+        runBlocking {
+            for (council in appConfig.councils) {
+                orchestrator.processCouncil(council)
+            }
         }
+    } finally {
+        koinApp.koin.get<AnthropicClientAsync>().close()
+        koinApp.koin.get<HttpClient>().close()
+        koinApp.close()
     }
 }
