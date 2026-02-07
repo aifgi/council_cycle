@@ -146,7 +146,9 @@ class Orchestrator(
             }
 
             val prompt = buildPrompt(url, conversionResult.text)
+            logger.trace("LLM Prompt {}", prompt)
             val rawResponse = llmClient.generate(prompt, model)
+            logger.debug("LLM response {}", rawResponse)
             val response = parseResponse(rawResponse)
                 ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
 
