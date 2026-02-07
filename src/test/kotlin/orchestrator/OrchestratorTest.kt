@@ -156,7 +156,7 @@ class OrchestratorTest {
     }
 
     @Test
-    fun `phase 3 iterates with agenda_fetch and accumulates items`() = runBlocking {
+    fun `phase 3 iterates with agenda_item_fetch and accumulates items`() = runBlocking {
         val scraper = webScraper(
             mapOf(
                 "https://council.example.com/agenda/1" to "<html><body><p>Agenda with items</p></body></html>",
@@ -167,7 +167,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, _ ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_fetch","urls":["https://council.example.com/report/1"],"reason":"Fetching report for Cycle Lane item","items":[{"title":"Traffic Filter","extract":"Detailed extract about traffic filter scheme"}]}"""
+                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Fetching report for Cycle Lane item","items":[{"title":"Traffic Filter","extract":"Detailed extract about traffic filter scheme"}]}"""
             } else {
                 """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Detailed extract about cycle lane from report"}]}"""
             }
@@ -196,7 +196,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, userPrompt ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_fetch","urls":["https://council.example.com/report/1"],"reason":"Need to read the full cycle lane report","items":[]}"""
+                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need to read the full cycle lane report","items":[]}"""
             } else {
                 secondUserPrompt = userPrompt
                 """{"type":"agenda_triaged","relevant":false}"""
@@ -222,7 +222,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, userPrompt ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Traffic Filter","extract":"Existing extract"}]}"""
+                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Traffic Filter","extract":"Existing extract"}]}"""
             } else {
                 secondUserPrompt = userPrompt
                 """{"type":"agenda_triaged","relevant":true,"items":[]}"""
@@ -248,7 +248,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, _ ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Cycle Lane","extract":"Brief extract"}]}"""
+                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Cycle Lane","extract":"Brief extract"}]}"""
             } else {
                 """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Updated detailed extract from report"}]}"""
             }
@@ -267,7 +267,7 @@ class OrchestratorTest {
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>"),
         )
         val llm = MockLlmClient { _, _ ->
-            """{"type":"agenda_fetch","urls":["https://council.example.com/agenda/1"],"reason":"Need more","items":[{"title":"Cycle Lane","extract":"Some extract"}]}"""
+            """{"type":"agenda_item_fetch","urls":["https://council.example.com/agenda/1"],"reason":"Need more","items":[{"title":"Cycle Lane","extract":"Some extract"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3, maxPhase3Iterations = 2)
 

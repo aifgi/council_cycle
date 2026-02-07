@@ -26,7 +26,7 @@ sealed interface PhaseResponse {
     ) : PhaseResponse
 
     @Serializable
-    @SerialName("agenda_fetch")
+    @SerialName("agenda_item_fetch")
     data class AgendaFetch(
         val urls: List<String>,
         val reason: String,

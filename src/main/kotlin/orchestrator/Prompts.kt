@@ -136,7 +136,7 @@ Respond with ONLY a JSON object (no explanatory text).
 
 To fetch more documents:
 {
-  "type": "agenda_fetch",
+  "type": "agenda_item_fetch",
   "urls": ["@1", "@2"],
   "reason": "Specific information sought",
   "items": [{"title": "...", "extract": "Detailed extract for completed item"}]
