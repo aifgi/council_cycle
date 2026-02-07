@@ -25,6 +25,8 @@ dependencies {
 
     implementation("org.jsoup:jsoup:1.18.3")
 
+    implementation("org.apache.pdfbox:pdfbox:3.0.4")
+
     implementation("io.ktor:ktor-client-core:3.0.3")
     implementation("io.ktor:ktor-client-cio:3.0.3")
 
