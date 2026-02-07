@@ -21,18 +21,18 @@ Council Cycle is a Kotlin JVM application that scrapes UK council websites for c
 
 ### 4-Phase Pipeline (orchestrator/)
 
-The orchestrator runs a 4-phase pipeline per council/committee. Phases 1-3 use a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations). Phase 4 is a single LLM call.
+The orchestrator runs a 4-phase pipeline per council. Phases 1-2 use a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations). Phase 3 has its own iterative loop with item accumulation (max 10 iterations). Phase 4 is a single LLM call.
 
-1. **Phase 1: Find Committee Page** — navigates from council site URL to the specific committee's page. Uses light model (Haiku).
+1. **Phase 1: Find Committee Pages** — navigates from council site URL and finds pages for all committees at once. Returns `CommitteePagesFound` with a list of `CommitteeUrl` objects. Uses light model (Haiku).
 2. **Phase 2: Find Meetings** — locates meetings with agenda links within a date range. Uses light model (Haiku).
-3. **Phase 3: Triage Agenda** — navigates agenda pages and determines relevance. If relevant, extracts the relevant portions (or summarizes minutes). Uses light model (Haiku). Returns `AgendaTriaged` with a `relevant` flag and optional `extract`.
+3. **Phase 3: Triage Agenda** — iteratively navigates agenda pages, triaging individual items. The LLM can respond with `AgendaFetch` to request more URLs while carrying forward already-triaged `TriagedItem` objects, or `AgendaTriaged` to finalize. Items are accumulated across iterations via `mergeItems()` (deduped by title). Uses light model (Haiku).
 4. **Phase 4: Analyze Extract** — analyzes pre-extracted content from phase 3 and produces `Scheme` objects. Uses heavy model (Sonnet). Single LLM call (no navigation). Only runs if phase 3 found relevant content. Populates `meetingDate` and `committeeName` on `Scheme` objects in code (not by the LLM).
 
 **Two-model strategy:** Haiku (`lightModel`) for navigation and triage (phases 1-3), Sonnet (`heavyModel`) for deep analysis (phase 4).
 
 **Prompt structure:** Prompts are split into `SplitPrompt(system, user)`. The `system` part contains static instructions (cached via `CacheControlEphemeral`), the `user` part contains dynamic page content. This enables Anthropic prompt caching — subsequent navigation loop iterations within a phase hit the cache on the system prompt. Prompt builders are in `Prompts.kt`.
 
-`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePageFound` (phase 1 result), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaTriaged` (phase 3 result, relevant flag + extracted text), `AgendaAnalyzed` (phase 4 result, contains `Scheme` objects).
+`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePagesFound` (phase 1 result, list of `CommitteeUrl`), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaFetch` (phase 3 intermediate — follow URLs + carry forward `TriagedItem` objects), `AgendaTriaged` (phase 3 final result, relevant flag + list of `TriagedItem`), `AgendaAnalyzed` (phase 4 result, contains `Scheme` objects).
 
 ### Other Packages
 
