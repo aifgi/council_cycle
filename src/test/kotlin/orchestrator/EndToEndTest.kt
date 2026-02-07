@@ -107,6 +107,14 @@ class EndToEndTest {
         orchestrator.processCouncil(councilConfig)
 
         assertEquals(1, processed.size, "ResultProcessor should be called once (one committee)")
-        assertTrue(processed[0].isNotEmpty(), "Expected at least one scheme from the January meeting")
+        val titles = processed[0].map { it.title }
+        assertTrue(
+            "Petition Regarding the Introduction of Traffic Management Measures On Manorgate Road" in titles,
+            "Expected scheme about Manorgate Road traffic management, got: $titles",
+        )
+        assertTrue(
+            "Coombe Lane West Zebra Crossing - Local Consultation Results" in titles,
+            "Expected scheme about Coombe Lane West zebra crossing, got: $titles",
+        )
     }
 }
