@@ -1,4 +1,4 @@
-import com.anthropic.client.okhttp.AnthropicOkHttpClient
+import com.anthropic.client.okhttp.AnthropicOkHttpClientAsync
 import config.AppConfig
 import config.loadConfig
 import io.ktor.client.HttpClient
@@ -45,7 +45,7 @@ fun main(args: Array<String>) {
 
     val llmModule = module {
         single {
-            AnthropicOkHttpClient.builder()
+            AnthropicOkHttpClientAsync.builder()
                 .apiKey(apiKey)
                 .build()
         }

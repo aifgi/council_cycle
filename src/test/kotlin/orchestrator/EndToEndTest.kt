@@ -1,6 +1,6 @@
 package orchestrator
 
-import com.anthropic.client.okhttp.AnthropicOkHttpClient
+import com.anthropic.client.okhttp.AnthropicOkHttpClientAsync
 import config.CouncilConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -95,7 +95,7 @@ class EndToEndTest {
     @Tag("real-llm")
     fun `end-to-end with real LLM`() = runBlocking {
         val apiKey = System.getenv("ANTHROPIC_API_KEY")
-        val anthropicClient = AnthropicOkHttpClient.builder()
+        val anthropicClient = AnthropicOkHttpClientAsync.builder()
             .apiKey(apiKey)
             .build()
         val llm = ClaudeLlmClient(anthropicClient)

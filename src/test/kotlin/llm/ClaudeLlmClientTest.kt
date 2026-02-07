@@ -1,6 +1,6 @@
 package llm
 
-import com.anthropic.client.okhttp.AnthropicOkHttpClient
+import com.anthropic.client.okhttp.AnthropicOkHttpClientAsync
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -33,7 +33,7 @@ class ClaudeLlmClientTest {
             )
             server.start()
 
-            val anthropicClient = AnthropicOkHttpClient.builder()
+            val anthropicClient = AnthropicOkHttpClientAsync.builder()
                 .baseUrl(server.url("/").toString())
                 .apiKey("test-key")
                 .build()
