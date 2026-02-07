@@ -25,7 +25,7 @@ The orchestrator runs a 4-phase pipeline per council. Phases 1-2 use a reusable 
 
 1. **Phase 1: Find Committee Pages** — navigates from council site URL and finds pages for all committees at once. Returns `CommitteePagesFound` with a list of `CommitteeUrl` objects. Uses light model (Haiku).
 2. **Phase 2: Find Meetings** — locates meetings with agenda links within a date range. Uses light model (Haiku).
-3. **Phase 3: Triage Agenda** — iteratively navigates agenda pages, triaging individual items. The LLM can respond with `AgendaFetch` to request more URLs while carrying forward already-triaged `TriagedItem` objects, or `AgendaTriaged` to finalize. Items are accumulated across iterations via `mergeItems()` (deduped by title). Uses light model (Haiku).
+3. **Phase 3: Triage Agenda** — iteratively navigates agenda pages, triaging individual items. The LLM can respond with `AgendaFetch` to request more URLs while carrying forward already-triaged `TriagedItem` objects, or `AgendaTriaged` to finalize. Items are accumulated across iterations in a `MutableMap` keyed by title (newer items overwrite older ones). Uses light model (Haiku).
 4. **Phase 4: Analyze Extract** — analyzes pre-extracted content from phase 3 and produces `Scheme` objects. Uses heavy model (Sonnet). Single LLM call (no navigation). Only runs if phase 3 found relevant content. Populates `meetingDate` and `committeeName` on `Scheme` objects in code (not by the LLM).
 
 **Two-model strategy:** Haiku (`lightModel`) for navigation and triage (phases 1-3), Sonnet (`heavyModel`) for deep analysis (phase 4).
@@ -42,7 +42,7 @@ The orchestrator runs a 4-phase pipeline per council. Phases 1-2 use a reusable 
   - `ContentExtractor` — three-step pipeline: (1) remove invisible elements, (2) extract main content area via configurable CSS selectors (keeps innermost on nested matches), (3) convert to annotated markdown.
   - `AnnotatedMarkdownConverter` — converts Jsoup Document to lightweight text preserving structure (headings, links, lists, tables as `[Table] / Row N: [Header] value`). Uses `ensureBlankLine()` to prevent excess newlines without regex.
 - `llm/` — `LlmClient` interface (`suspend fun generate(systemPrompt, userPrompt, model)`) with `ClaudeLlmClient` implementation using the Anthropic Java SDK's async client. System prompts are sent with `CacheControlEphemeral` for prompt caching. Includes application-level retry (3 retries with 30s/60s/60s delays + jitter) on top of the SDK's built-in retry (5 attempts) for rate limit errors.
-- `processor/` — `ResultProcessor` fun interface for handling extracted schemes. `LoggingResultProcessor` is the default implementation.
+- `processor/` — `ResultProcessor` fun interface for handling extracted schemes. Implementations in `processor.impl`: `LoggingResultProcessor` (logs to console), `FileResultProcessor` (writes to output directory), `CompositeResultProcessor` (delegates to multiple processors).
 
 **DI setup:** Koin modules defined inline in `Main.kt` — `configModule` (AppConfig), `scraperModule` (HttpClient/ContentExtractor/WebScraper), `llmModule` (AnthropicClientAsync/LlmClient), `orchestratorModule` (ResultProcessor/Orchestrator). Both `AnthropicClientAsync` and `HttpClient` are closed explicitly in a `finally` block (Koin's `close()` does not auto-close `single` beans).
 
