@@ -27,6 +27,7 @@ class FileResultProcessor(private val outputDir: Path) : ResultProcessor {
                 appendLine("Title: ${scheme.title}")
                 appendLine("Topic: ${scheme.topic}")
                 appendLine("Meeting date: ${scheme.meetingDate}")
+                appendLine("Agenda URL: ${scheme.agendaUrl}")
                 appendLine("Summary: ${wordWrap(scheme.summary, indent = "  ")}")
             }
         }

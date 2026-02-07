@@ -67,6 +67,7 @@ data class Scheme(
     val summary: String,
     val meetingDate: String = "",
     val committeeName: String = "",
+    val agendaUrl: String = "",
 )
 
 @Serializable

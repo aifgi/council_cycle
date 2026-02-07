@@ -23,6 +23,7 @@ class FileResultProcessorTest {
                     summary = "A new bus route proposal",
                     meetingDate = "2025-12-09",
                     committeeName = "Transport Committee",
+                    agendaUrl = "https://council.example.com/agenda/1",
                 ),
             )
 
@@ -37,6 +38,7 @@ class FileResultProcessorTest {
             assertTrue(content.contains("Title: New Bus Route"))
             assertTrue(content.contains("Topic: transport"))
             assertTrue(content.contains("Meeting date: 2025-12-09"))
+            assertTrue(content.contains("Agenda URL: https://council.example.com/agenda/1"))
             assertTrue(content.contains("Summary: A new bus route proposal"))
         } finally {
             dir.toFile().deleteRecursively()
