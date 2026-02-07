@@ -31,23 +31,23 @@ class OrchestratorTest {
         return WebScraper(HttpClient(engine), ContentExtractor())
     }
 
-    // --- Phase 1: Find committee page ---
+    // --- Phase 1: Find committee pages ---
 
     @Test
-    fun `phase 1 returns URL when found immediately`() = runBlocking {
+    fun `phase 1 returns URLs when found immediately`() = runBlocking {
         val scraper = webScraper(mapOf("https://council.example.com" to "<html><body><p>Committees page</p></body></html>"))
         val llm = MockLlmClient { _, _ ->
-            """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
+            """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://council.example.com/planning"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://council.example.com", listOf("Planning"))
 
-        assertEquals("https://council.example.com/planning", result)
+        assertEquals(mapOf("Planning" to "https://council.example.com/planning"), result)
     }
 
     @Test
-    fun `phase 1 follows fetch then finds committee page`() = runBlocking {
+    fun `phase 1 follows fetch then finds committee pages`() = runBlocking {
         val scraper = webScraper(
             mapOf(
                 "https://council.example.com" to "<html><body><p>Main page</p></body></html>",
@@ -60,14 +60,14 @@ class OrchestratorTest {
             if (callCount == 1) {
                 """{"type":"fetch","urls":["https://council.example.com/committees"],"reason":"Following committees link"}"""
             } else {
-                """{"type":"committee_page_found","url":"https://council.example.com/committees/planning"}"""
+                """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://council.example.com/committees/planning"}]}"""
             }
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://council.example.com", listOf("Planning"))
 
-        assertEquals("https://council.example.com/committees/planning", result)
+        assertEquals(mapOf("Planning" to "https://council.example.com/committees/planning"), result)
     }
 
     // --- Phase 2: Find meetings ---
@@ -183,7 +183,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 2)
 
-        val result = orchestrator.findCommitteePage("https://example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://example.com", listOf("Planning"))
 
         assertNull(result)
     }
@@ -191,10 +191,10 @@ class OrchestratorTest {
     @Test
     fun `returns null when all fetches fail`() = runBlocking {
         val scraper = webScraper(emptyMap())
-        val llm = MockLlmClient { _, _ -> """{"type":"committee_page_found","url":"https://x.com"}""" }
+        val llm = MockLlmClient { _, _ -> """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://x.com"}]}""" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://missing.example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://missing.example.com", listOf("Planning"))
 
         assertNull(result)
     }
@@ -205,7 +205,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, _ -> "this is not json" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://example.com", listOf("Planning"))
 
         assertNull(result)
     }
@@ -223,14 +223,14 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, userPrompt ->
             // The user prompt (page content) should contain @N tokens in markdown links instead of full URLs
             val linkToken = Regex("""\[Committees]\((@\d+)\)""").find(userPrompt)!!.groupValues[1]
-            """{"type":"committee_page_found","url":"$linkToken"}"""
+            """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"$linkToken"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
+        val result = orchestrator.findCommitteePages("https://council.example.com", listOf("Planning"))
 
         // The token should have been resolved back to the full URL
-        assertEquals("https://council.example.com/committees", result)
+        assertEquals(mapOf("Planning" to "https://council.example.com/committees"), result)
     }
 
     // --- End-to-end processCouncil ---
@@ -248,7 +248,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, _ ->
             callCount++
             when (callCount) {
-                1 -> """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
+                1 -> """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://council.example.com/planning"}]}"""
                 2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
                 3 -> """{"type":"agenda_triaged","relevant":true,"extract":"Item 1: Cycle Lane proposal"}"""
                 4 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane"}]}"""

@@ -14,9 +14,9 @@ sealed interface PhaseResponse {
     ) : PhaseResponse
 
     @Serializable
-    @SerialName("committee_page_found")
-    data class CommitteePageFound(
-        val url: String,
+    @SerialName("committee_pages_found")
+    data class CommitteePagesFound(
+        val committees: List<CommitteeUrl>,
     ) : PhaseResponse
 
     @Serializable
@@ -40,6 +40,12 @@ sealed interface PhaseResponse {
 }
 
 @Serializable
+data class CommitteeUrl(
+    val name: String,
+    val url: String,
+)
+
+@Serializable
 data class Meeting(
     val date: String,
     val title: String,
@@ -57,7 +63,9 @@ data class Scheme(
 
 fun PhaseResponse.resolveUrls(resolve: (String) -> String): PhaseResponse = when (this) {
     is PhaseResponse.Fetch -> copy(urls = urls.map { resolve(it) })
-    is PhaseResponse.CommitteePageFound -> copy(url = resolve(url))
+    is PhaseResponse.CommitteePagesFound -> copy(
+        committees = committees.map { it.copy(url = resolve(it.url)) }
+    )
     is PhaseResponse.MeetingsFound -> copy(
         meetings = meetings.map { it.copy(agendaUrl = it.agendaUrl?.let { url -> resolve(url) }) }
     )

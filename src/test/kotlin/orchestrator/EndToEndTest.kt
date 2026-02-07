@@ -62,8 +62,8 @@ class EndToEndTest {
         val llm = MockLlmClient { _, _ ->
             callCount++
             when (callCount) {
-                // Phase 1: CommitteeStructure → find committee page
-                1 -> """{"type":"committee_page_found","url":"$base/mgCommitteeDetails.aspx?ID=711"}"""
+                // Phase 1: CommitteeStructure → find committee pages
+                1 -> """{"type":"committee_pages_found","committees":[{"name":"Kingston and North Kingston Neighbourhood Committee","url":"$base/mgCommitteeDetails.aspx?ID=711"}]}"""
                 // Phase 2, iter 1: CommitteeDetails → fetch meetings listing
                 2 -> """{"type":"fetch","urls":["$base/ieListMeetings.aspx?CommitteeId=711"],"reason":"Following browse meetings link"}"""
                 // Phase 2, iter 2: BrowseMeetings → extract meetings in date range

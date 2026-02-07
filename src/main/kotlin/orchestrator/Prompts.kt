@@ -10,21 +10,21 @@ val TOPICS = listOf(
 )
 
 fun buildPhase1Prompt(
-    committeeName: String,
+    committeeNames: List<String>,
     pageContent: String,
 ): SplitPrompt {
     val system = """
-You are helping find a council committee's page on their website.
+You are helping find the URLs of council committees' dedicated pages on their website.
 
-Below are the committee name and the contents of a web page from this council's website. Your job is to either:
-1. Identify the URL of the committee's dedicated page, OR
-2. Identify links that are likely to lead to the committee's page.
+Below are the committee names and the contents of a web page from this council's website. Your job is to either:
+1. Identify the URLs of the listed committees' dedicated pages, OR
+2. Identify links that are likely to lead to the committees' pages.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
-If you need to follow links to find the committee page, respond with:
+If you need to follow links to find the committee pages, respond with:
 {
   "type": "fetch",
   "urls": ["@1"],
@@ -33,14 +33,17 @@ If you need to follow links to find the committee page, respond with:
 
 Only include URLs that appeared as links in the page content above. Choose the most relevant 1-5 links.
 
-If you found the committee's page URL, respond with:
+If you found the committees' page URLs, respond with:
 {
-  "type": "committee_page_found",
-  "url": "@1"
+  "type": "committee_pages_found",
+  "committees": [
+    {"name": "Committee Name", "url": "@1"}
+  ]
 }
 """.trimIndent()
 
-    val user = "Committee: $committeeName\n\n$pageContent"
+    val committeeList = committeeNames.joinToString("\n") { "- $it" }
+    val user = "Committees:\n$committeeList\n\n$pageContent"
     return SplitPrompt(system, user)
 }
 

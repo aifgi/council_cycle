@@ -23,11 +23,13 @@ class PhaseResponseTest {
     }
 
     @Test
-    fun `deserializes committee_page_found response`() {
-        val raw = """{"type":"committee_page_found","url":"https://example.com/planning"}"""
+    fun `deserializes committee_pages_found response`() {
+        val raw = """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://example.com/planning"}]}"""
         val response = json.decodeFromString<PhaseResponse>(raw)
         assertEquals(
-            PhaseResponse.CommitteePageFound(url = "https://example.com/planning"),
+            PhaseResponse.CommitteePagesFound(
+                committees = listOf(CommitteeUrl(name = "Planning", url = "https://example.com/planning")),
+            ),
             response,
         )
     }

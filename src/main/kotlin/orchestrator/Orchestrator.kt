@@ -26,10 +26,16 @@ class Orchestrator(
         val dateTo = council.dateTo
             ?: LocalDate.now().plusMonths(3).format(DateTimeFormatter.ISO_LOCAL_DATE)
 
+        val committeeUrls = findCommitteePages(council.siteUrl, council.committees)
+        if (committeeUrls == null) {
+            logger.warn("Could not find committee pages for council '{}'", council.name)
+            return
+        }
+
         for (committee in council.committees) {
             logger.info("Processing committee '{}' for council '{}'", committee, council.name)
 
-            val committeeUrl = findCommitteePage(council.siteUrl, committee)
+            val committeeUrl = committeeUrls[committee]
             if (committeeUrl == null) {
                 logger.warn("Could not find page for committee '{}' at '{}'", committee, council.name)
                 continue
@@ -64,16 +70,20 @@ class Orchestrator(
         }
     }
 
-    internal suspend fun findCommitteePage(
+    internal suspend fun findCommitteePages(
         startUrl: String,
-        committeeName: String,
-    ): String? {
+        committeeNames: List<String>,
+    ): Map<String, String>? {
         return navigationLoop(
             startUrl = startUrl,
-            phaseName = "Phase 1: Find committee page",
+            phaseName = "Phase 1: Find committee pages",
             model = lightModel,
-            buildPrompt = { content -> buildPhase1Prompt(committeeName, content) },
-            extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
+            buildPrompt = { content -> buildPhase1Prompt(committeeNames, content) },
+            extractResult = { response ->
+                (response as? PhaseResponse.CommitteePagesFound)
+                    ?.committees
+                    ?.associate { it.name to it.url }
+            },
         )
     }
 
