@@ -20,11 +20,13 @@ class ContentExtractor(
     }
 
     private fun removeInvisibleElements(document: Document) {
-        document.select("script, style, noscript, template, meta, link, img").remove()
-        document.select("[hidden]").remove()
-        document.select("[style~=(?i)display\\s*:\\s*none]").remove()
-        document.select("[style~=(?i)visibility\\s*:\\s*hidden]").remove()
-        document.select("[aria-hidden=true]").remove()
+        document.select(
+            "script, style, noscript, template, meta, link, img, " +
+                "[hidden], " +
+                "[style~=(?i)display\\s*:\\s*none], " +
+                "[style~=(?i)visibility\\s*:\\s*hidden], " +
+                "[aria-hidden=true]"
+        ).remove()
     }
 
     private fun extractMainContent(document: Document): Document {
