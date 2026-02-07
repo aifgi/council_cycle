@@ -29,14 +29,14 @@ class Orchestrator(
         for (committee in council.committees) {
             logger.info("Processing committee '{}' for council '{}'", committee, council.name)
 
-            val committeeUrl = findCommitteePage(council.siteUrl, council.name, committee)
+            val committeeUrl = findCommitteePage(council.siteUrl, committee)
             if (committeeUrl == null) {
                 logger.warn("Could not find page for committee '{}' at '{}'", committee, council.name)
                 continue
             }
             logger.info("Found committee page for '{}': {}", committee, committeeUrl)
 
-            val meetings = findMeetings(committeeUrl, council.name, committee, dateFrom, dateTo)
+            val meetings = findMeetings(committeeUrl, committee, dateFrom, dateTo)
             if (meetings == null || meetings.isEmpty()) {
                 logger.warn("No meetings found for '{}' at '{}'", committee, council.name)
                 continue
@@ -49,12 +49,12 @@ class Orchestrator(
                     logger.info("No agenda URL for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val triage = triageAgenda(meeting.agendaUrl, council.name, committee, meeting)
+                val triage = triageAgenda(meeting.agendaUrl)
                 if (triage == null || !triage.relevant) {
                     logger.info("Agenda not relevant for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val schemes = analyzeExtract(triage.extract!!, council.name, committee, meeting)
+                val schemes = analyzeExtract(triage.extract!!, committee, meeting)
                 if (schemes != null) {
                     allSchemes.addAll(schemes)
                 }
@@ -66,21 +66,19 @@ class Orchestrator(
 
     internal suspend fun findCommitteePage(
         startUrl: String,
-        councilName: String,
         committeeName: String,
     ): String? {
         return navigationLoop(
             startUrl = startUrl,
             phaseName = "Phase 1: Find committee page",
             model = lightModel,
-            buildPrompt = { url, content -> buildPhase1Prompt(councilName, committeeName, url, content) },
+            buildPrompt = { content -> buildPhase1Prompt(committeeName, content) },
             extractResult = { response -> (response as? PhaseResponse.CommitteePageFound)?.url },
         )
     }
 
     internal suspend fun findMeetings(
         committeeUrl: String,
-        councilName: String,
         committeeName: String,
         dateFrom: String,
         dateTo: String,
@@ -89,8 +87,8 @@ class Orchestrator(
             startUrl = committeeUrl,
             phaseName = "Phase 2: Find meetings",
             model = lightModel,
-            buildPrompt = { url, content ->
-                buildPhase2Prompt(councilName, committeeName, dateFrom, dateTo, url, content)
+            buildPrompt = { content ->
+                buildPhase2Prompt(committeeName, dateFrom, dateTo, content)
             },
             extractResult = { response -> (response as? PhaseResponse.MeetingsFound)?.meetings },
         )
@@ -98,39 +96,35 @@ class Orchestrator(
 
     internal suspend fun triageAgenda(
         agendaUrl: String,
-        councilName: String,
-        committeeName: String,
-        meeting: Meeting,
     ): PhaseResponse.AgendaTriaged? {
         return navigationLoop(
             startUrl = agendaUrl,
             phaseName = "Phase 3: Triage agenda",
             model = lightModel,
-            buildPrompt = { url, content ->
-                buildPhase3Prompt(councilName, committeeName, meeting, url, content)
-            },
+            buildPrompt = { content -> buildPhase3Prompt(content) },
             extractResult = { response -> response as? PhaseResponse.AgendaTriaged },
         )
     }
 
     internal suspend fun analyzeExtract(
         extract: String,
-        councilName: String,
         committeeName: String,
         meeting: Meeting,
     ): List<Scheme>? {
         logger.info("Phase 4: Analyzing extract for meeting '{}' on {}", meeting.title, meeting.date)
-        val prompt = buildPhase4Prompt(councilName, committeeName, meeting, extract)
+        val prompt = buildPhase4Prompt(extract)
         val rawResponse = llmClient.generate(prompt, heavyModel)
         val response = parseResponse(rawResponse) ?: return null
-        return (response as? PhaseResponse.AgendaAnalyzed)?.schemes
+        return (response as? PhaseResponse.AgendaAnalyzed)?.schemes?.map {
+            it.copy(meetingDate = meeting.date, committeeName = committeeName)
+        }
     }
 
     private suspend fun <R> navigationLoop(
         startUrl: String,
         phaseName: String,
         model: String,
-        buildPrompt: (String, String) -> String,
+        buildPrompt: (String) -> String,
         extractResult: (PhaseResponse) -> R?,
     ): R? {
         val urlQueue = mutableListOf(startUrl)
@@ -145,7 +139,7 @@ class Orchestrator(
                 continue
             }
 
-            val prompt = buildPrompt(url, conversionResult.text)
+            val prompt = buildPrompt(conversionResult.text)
             logger.trace("LLM Prompt {}", prompt)
             val rawResponse = llmClient.generate(prompt, model)
             logger.debug("LLM response {}", rawResponse)

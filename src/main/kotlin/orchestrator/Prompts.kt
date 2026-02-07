@@ -8,15 +8,12 @@ val TOPICS = listOf(
 )
 
 fun buildPhase1Prompt(
-    councilName: String,
     committeeName: String,
-    pageUrl: String,
     pageContent: String,
 ): String {
     return """
 You are helping find a council committee's page on their website.
 
-Council: $councilName
 Committee: $committeeName
 
 Below are the contents of a web page from this council's website. Your job is to either:
@@ -25,7 +22,6 @@ Below are the contents of a web page from this council's website. Your job is to
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
---- Page: $pageUrl ---
 $pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -48,17 +44,14 @@ If you found the committee's page URL, respond with:
 }
 
 fun buildPhase2Prompt(
-    councilName: String,
     committeeName: String,
     dateFrom: String,
     dateTo: String,
-    pageUrl: String,
     pageContent: String,
 ): String {
     return """
 You are helping find committee meeting agendas.
 
-Council: $councilName
 Committee: $committeeName
 Date range: $dateFrom to $dateTo
 
@@ -68,7 +61,6 @@ Below are the contents of a web page. Your job is to either:
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
---- Page: $pageUrl ---
 $pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -99,10 +91,6 @@ Only include meetings within the date range $dateFrom to $dateTo.
 }
 
 fun buildPhase3Prompt(
-    councilName: String,
-    committeeName: String,
-    meeting: Meeting,
-    pageUrl: String,
     pageContent: String,
 ): String {
     val topicsList = TOPICS.joinToString(", ")
@@ -110,16 +98,10 @@ fun buildPhase3Prompt(
     return """
 You are triaging a council committee meeting agenda to check if it contains items related to transport and planning schemes.
 
-Council: $councilName
-Committee: $committeeName
-Meeting date: ${meeting.date}
-Meeting title: ${meeting.title}
-
 Topics of interest: $topicsList
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
---- Page: $pageUrl ---
 $pageContent
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
@@ -153,20 +135,12 @@ If no relevant items are found, respond with:
 }
 
 fun buildPhase4Prompt(
-    councilName: String,
-    committeeName: String,
-    meeting: Meeting,
     extract: String,
 ): String {
     val topicsList = TOPICS.joinToString(", ")
 
     return """
 You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
-
-Council: $councilName
-Committee: $committeeName
-Meeting date: ${meeting.date}
-Meeting title: ${meeting.title}
 
 Topics of interest: $topicsList
 
@@ -183,9 +157,7 @@ Analyze the content above and identify any schemes or items related to the topic
     {
       "title": "Name of the scheme or agenda item",
       "topic": "Which topic it relates to (one of: $topicsList)",
-      "summary": "Brief summary of what is proposed or discussed",
-      "meetingDate": "${meeting.date}",
-      "committeeName": "$committeeName"
+      "summary": "Brief summary of what is proposed or discussed"
     }
   ]
 }

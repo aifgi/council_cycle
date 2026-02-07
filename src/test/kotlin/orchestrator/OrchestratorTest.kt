@@ -41,7 +41,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
+        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
 
         assertEquals("https://council.example.com/planning", result)
     }
@@ -65,7 +65,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
+        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
 
         assertEquals("https://council.example.com/committees/planning", result)
     }
@@ -83,7 +83,7 @@ class OrchestratorTest {
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val result = orchestrator.findMeetings(
-            "https://council.example.com/planning", "Test Council", "Planning", "2026-01-01", "2026-06-30",
+            "https://council.example.com/planning", "Planning", "2026-01-01", "2026-06-30",
         )
 
         assertEquals(1, result?.size)
@@ -111,7 +111,7 @@ class OrchestratorTest {
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
 
         val result = orchestrator.findMeetings(
-            "https://council.example.com/planning", "Test Council", "Planning", "2026-01-01", "2026-06-30",
+            "https://council.example.com/planning", "Planning", "2026-01-01", "2026-06-30",
         )
 
         assertEquals(1, result?.size)
@@ -130,10 +130,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
-        val result = orchestrator.triageAgenda(
-            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
-        )
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
 
         assertEquals(true, result?.relevant)
         assertEquals("Item 1: High Street Cycle Lane - new protected lane", result?.extract)
@@ -149,10 +146,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
-        val result = orchestrator.triageAgenda(
-            "https://council.example.com/agenda/1", "Test Council", "Planning", meeting,
-        )
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
 
         assertEquals(false, result?.relevant)
     }
@@ -163,18 +157,20 @@ class OrchestratorTest {
     fun `phase 4 returns schemes from extract`() = runBlocking {
         val scraper = webScraper(emptyMap())
         val llm = MockLlmClient { _ ->
-            """{"type":"agenda_analyzed","schemes":[{"title":"High Street Cycle Lane","topic":"cycle lanes","summary":"New protected lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
+            """{"type":"agenda_analyzed","schemes":[{"title":"High Street Cycle Lane","topic":"cycle lanes","summary":"New protected lane"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
         val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
         val result = orchestrator.analyzeExtract(
-            "Item 1: High Street Cycle Lane - new protected lane", "Test Council", "Planning", meeting,
+            "Item 1: High Street Cycle Lane - new protected lane", "Planning", meeting,
         )
 
         assertEquals(1, result?.size)
         assertEquals("High Street Cycle Lane", result?.get(0)?.title)
         assertEquals("cycle lanes", result?.get(0)?.topic)
+        assertEquals("2026-03-15", result?.get(0)?.meetingDate)
+        assertEquals("Planning", result?.get(0)?.committeeName)
     }
 
     // --- Cross-cutting concerns ---
@@ -187,7 +183,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 2)
 
-        val result = orchestrator.findCommitteePage("https://example.com", "Test", "Planning")
+        val result = orchestrator.findCommitteePage("https://example.com", "Planning")
 
         assertNull(result)
     }
@@ -198,7 +194,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ -> """{"type":"committee_page_found","url":"https://x.com"}""" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://missing.example.com", "Test", "Planning")
+        val result = orchestrator.findCommitteePage("https://missing.example.com", "Planning")
 
         assertNull(result)
     }
@@ -209,7 +205,7 @@ class OrchestratorTest {
         val llm = MockLlmClient { _ -> "this is not json" }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://example.com", "Test", "Planning")
+        val result = orchestrator.findCommitteePage("https://example.com", "Planning")
 
         assertNull(result)
     }
@@ -231,7 +227,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.findCommitteePage("https://council.example.com", "Test Council", "Planning")
+        val result = orchestrator.findCommitteePage("https://council.example.com", "Planning")
 
         // The token should have been resolved back to the full URL
         assertEquals("https://council.example.com/committees", result)
@@ -255,7 +251,7 @@ class OrchestratorTest {
                 1 -> """{"type":"committee_page_found","url":"https://council.example.com/planning"}"""
                 2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
                 3 -> """{"type":"agenda_triaged","relevant":true,"extract":"Item 1: Cycle Lane proposal"}"""
-                4 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane","meetingDate":"2026-03-15","committeeName":"Planning"}]}"""
+                4 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane"}]}"""
                 else -> error("Unexpected call $callCount")
             }
         }

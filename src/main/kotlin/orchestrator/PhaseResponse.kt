@@ -51,8 +51,8 @@ data class Scheme(
     val title: String,
     val topic: String,
     val summary: String,
-    val meetingDate: String,
-    val committeeName: String,
+    val meetingDate: String = "",
+    val committeeName: String = "",
 )
 
 fun PhaseResponse.resolveUrls(resolve: (String) -> String): PhaseResponse = when (this) {
