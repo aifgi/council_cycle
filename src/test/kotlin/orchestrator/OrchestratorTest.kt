@@ -279,29 +279,20 @@ class OrchestratorTest {
     }
 
     @Test
-    fun `phase 3 plain fetch works for initial navigation`() = runBlocking {
+    fun `phase 3 rejects plain fetch response`() = runBlocking {
         val scraper = webScraper(
             mapOf(
-                "https://council.example.com/meetings" to "<html><body><p>Meeting listing</p></body></html>",
-                "https://council.example.com/agenda/1" to "<html><body><p>Actual agenda</p></body></html>",
+                "https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>",
             ),
         )
-        var callCount = 0
         val llm = MockLlmClient { _, _ ->
-            callCount++
-            if (callCount == 1) {
-                """{"type":"fetch","urls":["https://council.example.com/agenda/1"],"reason":"Following agenda link"}"""
-            } else {
-                """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Detailed extract"}]}"""
-            }
+            """{"type":"fetch","urls":["https://council.example.com/meetings"],"reason":"Going back to meetings"}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val result = orchestrator.triageAgenda("https://council.example.com/meetings")
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1")
 
-        assertEquals(2, callCount)
-        assertEquals(true, result?.relevant)
-        assertEquals(1, result?.items?.size)
+        assertNull(result)
     }
 
     // --- Phase 4: Analyze extract ---

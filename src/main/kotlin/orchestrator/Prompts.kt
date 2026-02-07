@@ -99,6 +99,7 @@ Only include meetings within the date range specified above.
 }
 
 fun buildPhase3Prompt(
+    agendaUrl: String,
     pageContent: String,
     fetchReason: String? = null,
     accumulatedItems: Collection<TriagedItem> = emptyList(),
@@ -108,6 +109,8 @@ fun buildPhase3Prompt(
 
     val system = """
 You are triaging a council committee meeting agenda to identify items related to transport and planning schemes. Your goal is to build detailed extracts for each relevant item.
+
+IMPORTANT: You are analyzing the agenda at $agendaUrl. Stay focused on this agenda only. Do NOT navigate back to committee pages, meeting listings, or other meetings' agendas. Only fetch links that are documents related to items on THIS agenda (e.g. item-specific reports, minutes, decision documents).
 
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
@@ -130,13 +133,6 @@ Work iteratively through the agenda:
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
-
-If you have NOT yet seen the actual agenda (e.g. the page is a listing or navigation page), respond with:
-{
-  "type": "fetch",
-  "urls": ["@1"],
-  "reason": "Brief explanation"
-}
 
 If you need to fetch more documents to complete your analysis (e.g. reports, minutes, decision documents), respond with:
 {

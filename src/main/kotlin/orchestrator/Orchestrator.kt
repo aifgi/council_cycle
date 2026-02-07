@@ -123,7 +123,7 @@ class Orchestrator(
                 continue
             }
 
-            val prompt = buildPhase3Prompt(conversionResult.text, fetchReason, accumulatedItems.values)
+            val prompt = buildPhase3Prompt(agendaUrl, conversionResult.text, fetchReason, accumulatedItems.values)
             logger.trace("LLM Prompt {}", prompt.user)
             val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
             logger.debug("LLM response {}", rawResponse)
@@ -142,14 +142,6 @@ class Orchestrator(
                     logger.info(
                         "Phase 3: Triage agenda — LLM requests {} more URL(s): {}. Items so far: {}",
                         response.urls.size, response.reason, accumulatedItems.size,
-                    )
-                }
-                is PhaseResponse.Fetch -> {
-                    fetchReason = response.reason
-                    urlQueue.addAll(response.urls)
-                    logger.info(
-                        "Phase 3: Triage agenda — LLM requests {} more URL(s): {}",
-                        response.urls.size, response.reason,
                     )
                 }
                 else -> {
