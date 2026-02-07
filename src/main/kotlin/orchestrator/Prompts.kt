@@ -205,7 +205,7 @@ Analyze the content above and identify any schemes or items related to the topic
     {
       "title": "Name of the scheme or agenda item",
       "topic": "Which topic it relates to (one of: $topicsList)",
-      "summary": "Brief summary of what is proposed or discussed"
+      "summary": "Brief summary of what is proposed or discussed. If a decision was taken, it MUST be included."
     }
   ]
 }
