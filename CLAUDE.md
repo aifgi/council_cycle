@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Council Cycle is a Kotlin JVM application that scrapes UK council websites for committee meeting information (specifically transport and planning schemes) using LLM-guided navigation.
 
-**Key tech:** Kotlin 2.1, Gradle 8.11, Ktor Client (CIO engine) for HTTP, Jsoup for HTML parsing, Anthropic Java SDK for Claude, kotlinx.serialization (YAML via kaml, JSON), Koin for DI, SLF4J/Logback for logging.
+**Key tech:** Kotlin 2.1, Gradle 8.11, Ktor Client (CIO engine) for HTTP, Jsoup for HTML parsing, Apache PDFBox for PDF text extraction, Anthropic Java SDK (async client) for Claude, kotlinx.serialization (YAML via kaml, JSON), Koin for DI, SLF4J/Logback for logging.
 
 **Entry point:** `Main.kt` — takes two CLI arguments: a YAML config file and an LLM credentials file (plain text API key). Sets up four Koin DI modules (`configModule`, `scraperModule`, `llmModule`, `orchestratorModule`), then runs `Orchestrator.processCouncil()` for each council.
 
@@ -36,13 +36,13 @@ The orchestrator runs a 4-phase pipeline per council/committee. Phases 1-3 use a
 
 - `config/` — `AppConfig` (serializable data classes) and `ConfigLoader`. Config defines councils with names, site URLs, committee lists, and optional date range. See `config.example.yaml` for the schema.
 - `scraper/` — Content extraction pipeline:
-  - `WebScraper` — fetches pages via Ktor. `fetch()` returns raw HTML, `fetchAndExtract()` runs the full extraction pipeline.
+  - `WebScraper` — fetches pages via Ktor. `fetch()` returns raw HTML, `fetchAndExtract()` detects Content-Type and either extracts text from PDFs (via PDFBox) or runs the HTML extraction pipeline.
   - `ContentExtractor` — three-step pipeline: (1) remove invisible elements, (2) extract main content area via configurable CSS selectors (keeps innermost on nested matches), (3) convert to annotated markdown.
   - `AnnotatedMarkdownConverter` — converts Jsoup Document to lightweight text preserving structure (headings, links, lists, tables as `[Table] / Row N: [Header] value`). Resolves relative links to absolute URLs.
-- `llm/` — `LlmClient` interface (`suspend fun generate(prompt, model)`) with `ClaudeLlmClient` implementation using the Anthropic Java SDK.
+- `llm/` — `LlmClient` interface (`suspend fun generate(prompt, model)`) with `ClaudeLlmClient` implementation using the Anthropic Java SDK's async client (`AnthropicClientAsync`, `CompletableFuture.await()`).
 - `processor/` — `ResultProcessor` fun interface for handling extracted schemes. `LoggingResultProcessor` is the default implementation.
 
-**DI setup:** Koin modules defined inline in `Main.kt` — `configModule` (AppConfig), `scraperModule` (HttpClient/ContentExtractor/WebScraper), `llmModule` (AnthropicClient/LlmClient), `orchestratorModule` (ResultProcessor/Orchestrator).
+**DI setup:** Koin modules defined inline in `Main.kt` — `configModule` (AppConfig), `scraperModule` (HttpClient/ContentExtractor/WebScraper), `llmModule` (AnthropicClientAsync/LlmClient), `orchestratorModule` (ResultProcessor/Orchestrator). Both `AnthropicClientAsync` and `HttpClient` are closed explicitly in a `finally` block (Koin's `close()` does not auto-close `single` beans).
 
 ## Test Conventions
 
