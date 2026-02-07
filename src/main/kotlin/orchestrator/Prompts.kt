@@ -8,6 +8,7 @@ val TOPICS = listOf(
     "LTN/low traffic neighbourhoods",
     "public realm improvements",
     "school streets",
+    "pedestrian crossings",
 )
 
 val EXCLUDED_TOPICS = listOf(
