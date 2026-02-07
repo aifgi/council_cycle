@@ -109,7 +109,9 @@ Work iteratively through the agenda:
 1. IDENTIFY all potentially relevant agenda items. Err on the side of inclusion — if an item might relate to the topics above, treat it as relevant.
 
 2. For each relevant item, assess whether the page provides enough context to understand the details:
-   - If the item has a main document or report linked, you SHOULD fetch it. Summarize the document focusing on: what is being proposed, what consultation has been done, and what the results were.
+   - Only fetch documents that are specifically linked to a relevant agenda item (e.g. an item-specific report, minutes, or decision document).
+   - Do NOT fetch full agenda packs, combined document packs, or bulk PDFs that bundle all items together — these are too large and mostly irrelevant. If the only document available is a full agenda pack, work with whatever context is already on the page.
+   - If the item has its own dedicated report or document linked, fetch it. Summarize focusing on: what is being proposed, what consultation has been done, and what the results were.
    - If there are minutes for this item, summarize them focusing on: what question was raised and what decision was made.
    - If the minutes are on a separate page or in a separate document, fetch them.
    - If there is a decision, include it as-is in the extract.
