@@ -106,7 +106,7 @@ Topics of interest: $topicsList
 
 Work iteratively through the agenda:
 
-1. IDENTIFY all potentially relevant agenda items. Err on the side of inclusion — if an item might relate to the topics above, treat it as relevant.
+1. IDENTIFY all potentially relevant agenda items. Only include items that relate to the topics above.
 
 2. For each relevant item, assess whether the page provides enough context to understand the details:
    - Only fetch documents that are specifically linked to a relevant agenda item (e.g. an item-specific report, minutes, or decision document).
