@@ -94,37 +94,62 @@ Only include meetings within the date range specified above.
 
 fun buildPhase3Prompt(
     pageContent: String,
+    fetchReason: String? = null,
+    accumulatedItems: List<TriagedItem> = emptyList(),
 ): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
 
     val system = """
-You are triaging a council committee meeting agenda to check if it contains items related to transport and planning schemes.
+You are triaging a council committee meeting agenda to identify items related to transport and planning schemes. Your goal is to build detailed extracts for each relevant item.
 
 Topics of interest: $topicsList
+
+Work iteratively through the agenda:
+
+1. IDENTIFY all potentially relevant agenda items. Err on the side of inclusion — if an item might relate to the topics above, treat it as relevant.
+
+2. For each relevant item, assess whether the page provides enough context to understand the details:
+   - If the item has a main document or report linked, you SHOULD fetch it. Summarize the document focusing on: what is being proposed, what consultation has been done, and what the results were.
+   - If there are minutes for this item, summarize them focusing on: what question was raised and what decision was made.
+   - If the minutes are on a separate page or in a separate document, fetch them.
+   - If there is a decision, include it as-is in the extract.
+   - If there is a decision document on a separate page, fetch it and include its content as-is.
+
+3. Build DETAILED extracts for each item. Include specifics from documents you have reviewed — proposals, consultation results, decisions, vote counts, conditions. Do not return brief one-line summaries.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
-If you need to follow links to read the full agenda or individual agenda items, respond with:
+If you have NOT yet seen the actual agenda (e.g. the page is a listing or navigation page), respond with:
 {
   "type": "fetch",
   "urls": ["@1"],
   "reason": "Brief explanation"
 }
 
-Only include URLs that appeared as links in the page content above. Choose the most relevant 1-5 links. Do not follow links to PDF documents if the agenda content is already available on the page.
+If you need to fetch more documents to complete your analysis (e.g. reports, minutes, decision documents), respond with:
+{
+  "type": "agenda_fetch",
+  "urls": ["@1", "@2"],
+  "reason": "Detailed explanation of what you are looking for and why",
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract for this already-completed item"}
+  ]
+}
+Include in "items" all items you have already fully analyzed. The "reason" must explain specifically what information you expect to find in the requested documents.
 
-Once you have seen enough of the agenda, determine whether it contains any items related to the topics listed above.
+Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
 
-If the agenda contains relevant items, extract just the relevant portions verbatim and respond with:
+Once you have gathered enough information for all relevant items, respond with:
 {
   "type": "agenda_triaged",
   "relevant": true,
-  "extract": "The relevant text extracted from the agenda"
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract with full context"}
+  ]
 }
-
-Exception: if the page contains meeting minutes (rather than a forward-looking agenda), return a summary focusing on the question raised and the decision made, rather than verbatim text.
+Include only the items you analyzed in the current iteration. Previously analyzed items (shown below the page content if any) will be merged automatically.
 
 If no relevant items are found, respond with:
 {
@@ -133,7 +158,20 @@ If no relevant items are found, respond with:
 }
 """.trimIndent()
 
-    return SplitPrompt(system, pageContent)
+    val userParts = mutableListOf<String>()
+
+    if (fetchReason != null) {
+        userParts.add("You previously requested this page because: $fetchReason")
+    }
+
+    if (accumulatedItems.isNotEmpty()) {
+        val itemsText = accumulatedItems.joinToString("\n\n") { "## ${it.title}\n${it.extract}" }
+        userParts.add("Items analyzed so far:\n$itemsText")
+    }
+
+    userParts.add(pageContent)
+
+    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
 fun buildPhase4Prompt(

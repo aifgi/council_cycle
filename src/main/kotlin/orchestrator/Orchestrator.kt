@@ -18,6 +18,7 @@ class Orchestrator(
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val heavyModel: String = DEFAULT_HEAVY_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
+    private val maxPhase3Iterations: Int = DEFAULT_MAX_PHASE3_ITERATIONS,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -56,11 +57,12 @@ class Orchestrator(
                     continue
                 }
                 val triage = triageAgenda(meeting.agendaUrl)
-                if (triage == null || !triage.relevant) {
+                if (triage == null || !triage.relevant || triage.items.isEmpty()) {
                     logger.info("Agenda not relevant for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val schemes = analyzeExtract(triage.extract!!, committee, meeting)
+                val extract = triage.items.joinToString("\n\n") { "## ${it.title}\n${it.extract}" }
+                val schemes = analyzeExtract(extract, committee, meeting)
                 if (schemes != null) {
                     allSchemes.addAll(schemes)
                 }
@@ -107,13 +109,74 @@ class Orchestrator(
     internal suspend fun triageAgenda(
         agendaUrl: String,
     ): PhaseResponse.AgendaTriaged? {
-        return navigationLoop(
-            startUrl = agendaUrl,
-            phaseName = "Phase 3: Triage agenda",
-            model = lightModel,
-            buildPrompt = { content -> buildPhase3Prompt(content) },
-            extractResult = { response -> response as? PhaseResponse.AgendaTriaged },
-        )
+        val urlQueue = mutableListOf(agendaUrl)
+        var accumulatedItems = listOf<TriagedItem>()
+        var fetchReason: String? = null
+
+        for (iteration in 1..maxPhase3Iterations) {
+            val url = urlQueue.removeFirstOrNull() ?: break
+            logger.info("Phase 3: Triage agenda — iteration {}: fetching {}", iteration, url)
+
+            val conversionResult = webScraper.fetchAndExtract(url)
+            if (conversionResult == null) {
+                logger.warn("Phase 3: Triage agenda — fetch failed for {}", url)
+                continue
+            }
+
+            val prompt = buildPhase3Prompt(conversionResult.text, fetchReason, accumulatedItems)
+            logger.trace("LLM Prompt {}", prompt.user)
+            val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
+            logger.debug("LLM response {}", rawResponse)
+            val response = parseResponse(rawResponse)
+                ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
+
+            when (response) {
+                is PhaseResponse.AgendaTriaged -> {
+                    val allItems = mergeItems(accumulatedItems, response.items)
+                    return response.copy(items = allItems)
+                }
+                is PhaseResponse.AgendaFetch -> {
+                    accumulatedItems = mergeItems(accumulatedItems, response.items)
+                    fetchReason = response.reason
+                    urlQueue.addAll(response.urls)
+                    logger.info(
+                        "Phase 3: Triage agenda — LLM requests {} more URL(s): {}. Items so far: {}",
+                        response.urls.size, response.reason, accumulatedItems.size,
+                    )
+                }
+                is PhaseResponse.Fetch -> {
+                    fetchReason = response.reason
+                    urlQueue.addAll(response.urls)
+                    logger.info(
+                        "Phase 3: Triage agenda — LLM requests {} more URL(s): {}",
+                        response.urls.size, response.reason,
+                    )
+                }
+                else -> {
+                    logger.warn("Phase 3: Triage agenda — unexpected response type: {}", response::class.simpleName)
+                    return null
+                }
+            }
+        }
+
+        if (accumulatedItems.isNotEmpty()) {
+            logger.warn(
+                "Phase 3: Triage agenda — max iterations ({}) reached, returning {} accumulated items",
+                maxPhase3Iterations, accumulatedItems.size,
+            )
+            return PhaseResponse.AgendaTriaged(relevant = true, items = accumulatedItems)
+        }
+
+        logger.warn("Phase 3: Triage agenda — max iterations ({}) reached with no results", maxPhase3Iterations)
+        return null
+    }
+
+    private fun mergeItems(existing: List<TriagedItem>, new: List<TriagedItem>): List<TriagedItem> {
+        val merged = existing.associateBy { it.title }.toMutableMap()
+        for (item in new) {
+            merged[item.title] = item
+        }
+        return merged.values.toList()
     }
 
     internal suspend fun analyzeExtract(
@@ -193,5 +256,6 @@ class Orchestrator(
         const val DEFAULT_LIGHT_MODEL = "claude-haiku-4-5-20251001"
         const val DEFAULT_HEAVY_MODEL = "claude-sonnet-4-5-20250929"
         const val DEFAULT_MAX_ITERATIONS = 5
+        const val DEFAULT_MAX_PHASE3_ITERATIONS = 10
     }
 }

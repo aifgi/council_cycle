@@ -70,8 +70,8 @@ class EndToEndTest {
                 3 -> """{"type":"meetings_found","meetings":[{"date":"2025-12-04","title":"Kingston and North Kingston Neighbourhood Committee (Cancelled)","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"},{"date":"2026-01-15","title":"Kingston and North Kingston Neighbourhood Committee","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}]}"""
                 // Phase 3: Triage Agenda_412 (cancelled meeting) → not relevant
                 4 -> """{"type":"agenda_triaged","relevant":false}"""
-                // Phase 3: Triage Agenda_151 (real meeting) → relevant, extract content
-                5 -> """{"type":"agenda_triaged","relevant":true,"extract":"Item 5: Manorgate Road Traffic Management - proposal for traffic filters in the Manorgate Road area.\nItem 8: Coombe Lane West Zebra Crossing - proposed zebra crossing on Coombe Lane West."}"""
+                // Phase 3: Triage Agenda_151 (real meeting) → relevant, extract items
+                5 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Manorgate Road Traffic Management","extract":"Item 5: Manorgate Road Traffic Management - proposal for traffic filters in the Manorgate Road area."},{"title":"Coombe Lane West Zebra Crossing","extract":"Item 8: Coombe Lane West Zebra Crossing - proposed zebra crossing on Coombe Lane West."}]}"""
                 // Phase 4: Analyze extract → schemes found
                 6 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
                 else -> error("Unexpected LLM call $callCount")
