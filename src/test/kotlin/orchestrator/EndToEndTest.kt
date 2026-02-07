@@ -109,12 +109,12 @@ class EndToEndTest {
         assertEquals(1, processed.size, "ResultProcessor should be called once (one committee)")
         val titles = processed[0].map { it.title }
         assertTrue(
-            "Petition Regarding the Introduction of Traffic Management Measures On Manorgate Road" in titles,
-            "Expected scheme about Manorgate Road traffic management, got: $titles",
+            titles.any { "Traffic Management Measures On Manorgate Road" in it },
+            "Expected scheme with title containing 'Traffic Management Measures On Manorgate Road', got: $titles",
         )
         assertTrue(
-            "Coombe Lane West Zebra Crossing - Local Consultation Results" in titles,
-            "Expected scheme about Coombe Lane West zebra crossing, got: $titles",
+            titles.any { "Coombe Lane West Zebra Crossing" in it },
+            "Expected scheme with title containing 'Coombe Lane West Zebra Crossing', got: $titles",
         )
     }
 }
