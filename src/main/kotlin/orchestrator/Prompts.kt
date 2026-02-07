@@ -7,6 +7,11 @@ val TOPICS = listOf(
     "traffic filters",
     "LTN/low traffic neighbourhoods",
     "public realm improvements",
+    "school streets",
+)
+
+val EXCLUDED_TOPICS = listOf(
+    "highway maintenance",
 )
 
 fun buildPhase1Prompt(
@@ -98,11 +103,13 @@ fun buildPhase3Prompt(
     accumulatedItems: List<TriagedItem> = emptyList(),
 ): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
+    val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
     val system = """
 You are triaging a council committee meeting agenda to identify items related to transport and planning schemes. Your goal is to build detailed extracts for each relevant item.
 
 Topics of interest: $topicsList
+Excluded topics (do not include): $excludedList
 
 Work iteratively through the agenda:
 
@@ -180,11 +187,13 @@ fun buildPhase4Prompt(
     extract: String,
 ): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
+    val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
     val system = """
 You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
 
 Topics of interest: $topicsList
+Excluded topics (do not include): $excludedList
 
 Respond with a single JSON object (no other text). The JSON must have a "type" field.
 
