@@ -27,7 +27,7 @@ class FileResultProcessor(private val outputDir: Path) : ResultProcessor {
                 appendLine("Title: ${scheme.title}")
                 appendLine("Topic: ${scheme.topic}")
                 appendLine("Meeting date: ${scheme.meetingDate}")
-                appendLine("Summary: ${scheme.summary}")
+                appendLine("Summary: ${wordWrap(scheme.summary, indent = "  ")}")
             }
         }
 
@@ -38,5 +38,24 @@ class FileResultProcessor(private val outputDir: Path) : ResultProcessor {
     companion object {
         internal fun sanitizeFilename(name: String): String =
             name.replace(Regex("[^a-zA-Z0-9 ._-]"), "_")
+
+        internal fun wordWrap(text: String, maxWidth: Int = 80, indent: String = ""): String = buildString {
+            var pos = 0
+            while (pos < text.length) {
+                if (pos > 0) append("\n$indent")
+                val remaining = text.length - pos
+                if (remaining <= maxWidth) {
+                    append(text, pos, text.length)
+                    break
+                }
+                val breakAt = text.indexOf(' ', pos + maxWidth)
+                if (breakAt == -1) {
+                    append(text, pos, text.length)
+                    break
+                }
+                append(text, pos, breakAt)
+                pos = breakAt + 1
+            }
+        }
     }
 }
