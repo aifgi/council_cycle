@@ -16,9 +16,7 @@ fun buildPhase1Prompt(
     val system = """
 You are helping find a council committee's page on their website.
 
-Committee: $committeeName
-
-Below are the contents of a web page from this council's website. Your job is to either:
+Below are the committee name and the contents of a web page from this council's website. Your job is to either:
 1. Identify the URL of the committee's dedicated page, OR
 2. Identify links that are likely to lead to the committee's page.
 
@@ -42,7 +40,8 @@ If you found the committee's page URL, respond with:
 }
 """.trimIndent()
 
-    return SplitPrompt(system, pageContent)
+    val user = "Committee: $committeeName\n\n$pageContent"
+    return SplitPrompt(system, user)
 }
 
 fun buildPhase2Prompt(
@@ -54,10 +53,7 @@ fun buildPhase2Prompt(
     val system = """
 You are helping find committee meeting agendas.
 
-Committee: $committeeName
-Date range: $dateFrom to $dateTo
-
-Below are the contents of a web page. Your job is to either:
+Below are the committee name, date range, and the contents of a web page. Your job is to either:
 1. Find meetings within the date range that have agenda documents/pages, OR
 2. Identify links that are likely to lead to meeting listings or agendas.
 
@@ -86,10 +82,11 @@ If you found meetings, respond with:
   ]
 }
 
-Only include meetings within the date range $dateFrom to $dateTo.
+Only include meetings within the date range specified above.
 """.trimIndent()
 
-    return SplitPrompt(system, pageContent)
+    val user = "Committee: $committeeName\nDate range: $dateFrom to $dateTo\n\n$pageContent"
+    return SplitPrompt(system, user)
 }
 
 fun buildPhase3Prompt(
