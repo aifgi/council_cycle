@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class AppConfig(
     val councils: List<CouncilConfig>,
     val outputDir: String? = null,
+    val debugLlmDir: String? = null,
 )
 
 @Serializable

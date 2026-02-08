@@ -1,4 +1,5 @@
 outputDir: "output"
+#debugLlmDir: "debug-llm"
 councils:
   - name: "Example Council"
     siteUrl: "https://example.council.gov.uk"

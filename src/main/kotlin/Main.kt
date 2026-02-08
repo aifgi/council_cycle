@@ -7,6 +7,7 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
+import llm.LoggingLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.FindCommitteePagesPhase
 import orchestrator.phase.FindMeetingsPhase
@@ -58,7 +59,11 @@ fun main(args: Array<String>) {
                 .maxRetries(5)
                 .build()
         }
-        single<LlmClient> { ClaudeLlmClient(get()) }
+        single<LlmClient> {
+            val client: LlmClient = ClaudeLlmClient(get())
+            val config = get<AppConfig>()
+            if (config.debugLlmDir != null) LoggingLlmClient(client, config.debugLlmDir) else client
+        }
     }
 
     val orchestratorModule = module {
