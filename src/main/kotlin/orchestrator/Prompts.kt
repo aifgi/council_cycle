@@ -303,6 +303,10 @@ Respond with ONLY a single JSON object. Do not include any reasoning, explanatio
 
 Analyze the content above and identify any schemes or items related to the topics listed.
 
+If the content includes any decision, resolution, approval, refusal, deferral, endorsement, recommendation, it MUST be explicitly included in the summary.
+When NO decision is recorded:
+- Explicitly state this using a sentence such as "No decision."
+
 {
   "type": "agenda_analyzed",
   "schemes": [
