@@ -67,7 +67,7 @@ class EndToEndTest {
                 // Phase 2, iter 1: CommitteeDetails → fetch meetings listing
                 2 -> """{"type":"fetch","urls":["$base/ieListMeetings.aspx?CommitteeId=711"],"reason":"Following browse meetings link"}"""
                 // Phase 2, iter 2: BrowseMeetings → extract meetings in date range
-                3 -> """{"type":"meetings_found","meetings":[{"date":"2025-12-04","title":"Kingston and North Kingston Neighbourhood Committee (Cancelled)","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"},{"date":"2026-01-15","title":"Kingston and North Kingston Neighbourhood Committee","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}]}"""
+                3 -> """{"type":"meetings_found","meetings":[{"date":"2025-12-04","title":"Kingston and North Kingston Neighbourhood Committee (Cancelled)","meetingUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"},{"date":"2026-01-15","title":"Kingston and North Kingston Neighbourhood Committee","meetingUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}]}"""
                 // Phase 3: Triage Agenda_412 (cancelled meeting) → not relevant
                 4 -> """{"type":"agenda_triaged","relevant":false}"""
                 // Phase 3: Triage Agenda_151 (real meeting) → relevant, extract items

@@ -38,6 +38,7 @@ sealed interface PhaseResponse {
     data class AgendaTriaged(
         val relevant: Boolean,
         val items: Collection<TriagedItem> = emptyList(),
+        val summary: String? = null,
     ) : PhaseResponse
 
     @Serializable
@@ -57,7 +58,7 @@ data class CommitteeUrl(
 data class Meeting(
     val date: String,
     val title: String,
-    val agendaUrl: String? = null,
+    val meetingUrl: String? = null,
 )
 
 @Serializable
@@ -83,7 +84,7 @@ fun PhaseResponse.resolveUrls(resolve: (String) -> String): PhaseResponse = when
         committees = committees.map { it.copy(url = resolve(it.url)) }
     )
     is PhaseResponse.MeetingsFound -> copy(
-        meetings = meetings.map { it.copy(agendaUrl = it.agendaUrl?.let { url -> resolve(url) }) }
+        meetings = meetings.map { it.copy(meetingUrl = it.meetingUrl?.let { url -> resolve(url) }) }
     )
     is PhaseResponse.AgendaTriaged -> this
     is PhaseResponse.AgendaAnalyzed -> this

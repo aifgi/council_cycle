@@ -40,8 +40,8 @@ class PhaseResponseTest {
             {
               "type": "meetings_found",
               "meetings": [
-                {"date": "2026-03-15", "title": "Planning Meeting", "agendaUrl": "https://example.com/agenda"},
-                {"date": "2026-04-10", "title": "Special Meeting", "agendaUrl": null}
+                {"date": "2026-03-15", "title": "Planning Meeting", "meetingUrl": "https://example.com/agenda"},
+                {"date": "2026-04-10", "title": "Special Meeting", "meetingUrl": null}
               ]
             }
         """.trimIndent()
@@ -49,17 +49,17 @@ class PhaseResponseTest {
         assertEquals(2, response.meetings.size)
         assertEquals("2026-03-15", response.meetings[0].date)
         assertEquals("Planning Meeting", response.meetings[0].title)
-        assertEquals("https://example.com/agenda", response.meetings[0].agendaUrl)
+        assertEquals("https://example.com/agenda", response.meetings[0].meetingUrl)
         assertEquals("2026-04-10", response.meetings[1].date)
-        assertNull(response.meetings[1].agendaUrl)
+        assertNull(response.meetings[1].meetingUrl)
     }
 
     @Test
-    fun `deserializes meetings_found with missing agendaUrl`() {
+    fun `deserializes meetings_found with missing meetingUrl`() {
         val raw = """{"type":"meetings_found","meetings":[{"date":"2026-01-01","title":"Meeting"}]}"""
         val response = json.decodeFromString<PhaseResponse>(raw) as PhaseResponse.MeetingsFound
         assertEquals(1, response.meetings.size)
-        assertNull(response.meetings[0].agendaUrl)
+        assertNull(response.meetings[0].meetingUrl)
     }
 
     @Test

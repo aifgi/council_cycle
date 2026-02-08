@@ -79,7 +79,7 @@ class OrchestratorTest {
             mapOf("https://council.example.com/planning" to "<html><body><p>Meetings</p></body></html>"),
         )
         val llm = MockLlmClient { _, _ ->
-            """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
+            """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","meetingUrl":"https://council.example.com/agenda/1"}]}"""
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
@@ -89,7 +89,7 @@ class OrchestratorTest {
 
         assertEquals(1, result?.size)
         assertEquals("2026-03-15", result?.get(0)?.date)
-        assertEquals("https://council.example.com/agenda/1", result?.get(0)?.agendaUrl)
+        assertEquals("https://council.example.com/agenda/1", result?.get(0)?.meetingUrl)
     }
 
     @Test
@@ -116,7 +116,7 @@ class OrchestratorTest {
         )
 
         assertEquals(1, result?.size)
-        assertNull(result?.get(0)?.agendaUrl)
+        assertNull(result?.get(0)?.meetingUrl)
     }
 
     // --- Phase 3: Triage agenda ---
@@ -305,7 +305,7 @@ class OrchestratorTest {
         }
         val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 3)
 
-        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", agendaUrl = "https://council.example.com/agenda/1")
+        val meeting = Meeting(date = "2026-03-15", title = "Planning Meeting", meetingUrl = "https://council.example.com/agenda/1")
         val result = orchestrator.analyzeExtract(
             "Item 1: High Street Cycle Lane - new protected lane", "Planning", meeting,
         )
@@ -393,7 +393,7 @@ class OrchestratorTest {
             callCount++
             when (callCount) {
                 1 -> """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://council.example.com/planning"}]}"""
-                2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","agendaUrl":"https://council.example.com/agenda/1"}]}"""
+                2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","meetingUrl":"https://council.example.com/agenda/1"}]}"""
                 3 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane proposal","extract":"Item 1: Cycle Lane proposal - detailed description of the proposed cycle lane on High Street"}]}"""
                 4 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane"}]}"""
                 else -> error("Unexpected call $callCount")

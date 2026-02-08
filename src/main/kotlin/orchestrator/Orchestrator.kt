@@ -52,11 +52,11 @@ class Orchestrator(
 
             val allSchemes = mutableListOf<Scheme>()
             for (meeting in meetings) {
-                if (meeting.agendaUrl == null) {
+                if (meeting.meetingUrl == null) {
                     logger.info("No agenda URL for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
                 }
-                val triage = triageAgenda(meeting.agendaUrl, committee, meeting.date)
+                val triage = triageAgenda(meeting.meetingUrl, committee, meeting.date)
                 if (triage == null || !triage.relevant || triage.items.isEmpty()) {
                     logger.info("Agenda not relevant for meeting '{}' on {}", meeting.title, meeting.date)
                     continue
@@ -175,7 +175,7 @@ class Orchestrator(
         val rawResponse = llmClient.generate(prompt.system, prompt.user, heavyModel)
         val response = parseResponse(rawResponse) ?: return null
         return (response as? PhaseResponse.AgendaAnalyzed)?.schemes?.map {
-            it.copy(meetingDate = meeting.date, committeeName = committeeName, agendaUrl = meeting.agendaUrl ?: "")
+            it.copy(meetingDate = meeting.date, committeeName = committeeName, agendaUrl = meeting.meetingUrl ?: "")
         }
     }
 
