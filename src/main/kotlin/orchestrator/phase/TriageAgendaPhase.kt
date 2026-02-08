@@ -1,7 +1,6 @@
 package orchestrator.phase
 
 import llm.LlmClient
-import orchestrator.Orchestrator
 import orchestrator.LlmResponse
 import orchestrator.TriagedItem
 import orchestrator.buildPhase3Prompt
@@ -20,8 +19,8 @@ data class TriageAgendaInput(
 class TriageAgendaPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val lightModel: String = Orchestrator.Companion.DEFAULT_LIGHT_MODEL,
-    private val maxIterations: Int = Orchestrator.Companion.DEFAULT_MAX_PHASE3_ITERATIONS,
+    private val lightModel: String = DEFAULT_LIGHT_MODEL,
+    private val maxIterations: Int = DEFAULT_TRIAGE_MAX_ITERATIONS,
 ) : BasePhase(webScraper, llmClient), Phase<TriageAgendaInput, LlmResponse.AgendaTriaged> {
 
     override val name = "Phase 3: Triage agenda"

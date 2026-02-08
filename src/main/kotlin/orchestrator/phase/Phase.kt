@@ -8,6 +8,11 @@ import orchestrator.resolveUrls
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
 
+const val DEFAULT_LIGHT_MODEL = "claude-haiku-4-5-20251001"
+const val DEFAULT_HEAVY_MODEL = "claude-sonnet-4-5-20250929"
+const val DEFAULT_MAX_ITERATIONS = 5
+const val DEFAULT_TRIAGE_MAX_ITERATIONS = 5
+
 interface Phase<in I, out O> {
     val name: String
     suspend fun execute(input: I): O?

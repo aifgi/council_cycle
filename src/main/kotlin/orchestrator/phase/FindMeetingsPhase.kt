@@ -2,7 +2,6 @@ package orchestrator.phase
 
 import llm.LlmClient
 import orchestrator.Meeting
-import orchestrator.Orchestrator
 import orchestrator.LlmResponse
 import orchestrator.buildPhase2Prompt
 import scraper.WebScraper
@@ -17,8 +16,8 @@ data class FindMeetingsInput(
 class FindMeetingsPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val lightModel: String = Orchestrator.Companion.DEFAULT_LIGHT_MODEL,
-    private val maxIterations: Int = Orchestrator.Companion.DEFAULT_MAX_ITERATIONS,
+    private val lightModel: String = DEFAULT_LIGHT_MODEL,
+    private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
 ) : BasePhase(webScraper, llmClient), Phase<FindMeetingsInput, List<Meeting>> {
 
     override val name = "Phase 2: Find meetings"
