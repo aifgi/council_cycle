@@ -109,53 +109,60 @@ fun buildPhase3Prompt(
     val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
     val system = """
-You are triaging a council committee meeting agenda to identify transport/planning items and build detailed extracts for each.
+You are triaging a council committee meeting agenda to identify items related to transport and planning schemes. Your goal is to build detailed extracts for each relevant item.
 
-IMPORTANT: Stay on THIS agenda only — do not navigate to other meetings or committee pages.
+IMPORTANT: Stay focused on this agenda only. Do NOT navigate back to committee pages, meeting listings, or other meetings' agendas. Only fetch links that are documents related to items on THIS agenda (e.g. item-specific reports, minutes, decision documents).
 
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
 
-DOCUMENT FETCHING RULES:
-- Only fetch item-specific documents (reports, minutes, decisions) linked to relevant items
-- NEVER fetch full agenda packs, public reports pack or bundled PDFs covering all items
-- If only a full pack exists, work with the page context alone
+Work iteratively through the agenda:
 
-PROCESS:
-1. Identify relevant agenda items
-2. For each item, assess if you need more context:
-   - Fetch item-specific reports → summarize: proposal, consultation, results
-   - Fetch minutes/decisions → summarize: questions raised, decisions made
-3. Build detailed extracts including specifics from all reviewed documents
+1. IDENTIFY all potentially relevant agenda items. Only include items that relate to the topics above.
 
-URL REFERENCES:
-URLs appear as @1, @2, etc. Use these references when requesting fetches.
+2. For each relevant item, assess whether the page provides enough context to understand the details:
+   - Only fetch documents that are specifically linked to a relevant agenda item (e.g. an item-specific report, minutes, or decision document).
+   - Do NOT fetch full agenda packs, combined document packs, or bulk PDFs that bundle all items together — these are too large and mostly irrelevant. If the only document available is a full agenda pack, work with whatever context is already on the page.
+   - If the item has its own dedicated report or document linked, fetch it. Summarize focusing on: what is being proposed, what consultation has been done, and what the results were.
+   - If there are minutes for this item, summarize them focusing on: what question was raised and what decision was made.
+   - If the minutes are on a separate page or in a separate document, fetch them.
+   - If there is a decision, include it as-is in the extract.
+   - If there is a decision document on a separate page, fetch it and include its content as-is.
 
-OUTPUT FORMAT:
-Respond with ONLY a JSON object (no explanatory text).
+3. Build DETAILED extracts for each item. Include specifics from documents you have reviewed — proposals, consultation results, decisions, vote counts, conditions. Do not return brief one-line summaries.
 
-To fetch more documents:
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+
+If you need to fetch more documents to complete your analysis (e.g. reports, minutes, decision documents), respond with:
 {
-  "type": "agenda_item_fetch",
+  "type": "agenda_fetch",
   "urls": ["@1", "@2"],
-  "reason": "Specific information sought",
-  "items": [{"title": "...", "extract": "Detailed extract for completed item"}]
+  "reason": "Detailed explanation of what you are looking for and why",
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract for this already-completed item"}
+  ]
 }
+Include in "items" all items you have already fully analyzed. The "reason" must explain specifically what information you expect to find in the requested documents.
 
-When finished with relevant items found:
+Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
+
+Once you have gathered enough information for all relevant items, respond with:
 {
   "type": "agenda_triaged",
   "relevant": true,
-  "items": [{"title": "...", "extract": "Detailed extract"}]
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract with full context"}
+  ]
 }
+Include only the items you analyzed in the current iteration. Previously analyzed items (shown below the page content if any) will be merged automatically.
 
-When no relevant items found:
+If no relevant items are found, respond with:
 {
   "type": "agenda_triaged",
   "relevant": false
 }
-
-Include only newly analyzed items in "items"; previous items are merged automatically.
 """.trimIndent()
 
     val userParts = mutableListOf<String>()
