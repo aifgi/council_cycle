@@ -279,6 +279,36 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `phase 3 continues processing queued URLs when LLM returns agenda_triaged early`() = runBlocking {
+        val scraper = webScraper(
+            mapOf(
+                "https://council.example.com/agenda/1" to "<html><body><p>Agenda with items</p></body></html>",
+                "https://council.example.com/report/1" to "<html><body><p>Report 1</p></body></html>",
+                "https://council.example.com/report/2" to "<html><body><p>Report 2</p></body></html>",
+            ),
+        )
+        var callCount = 0
+        val llm = MockLlmClient { _, _ ->
+            callCount++
+            when (callCount) {
+                1 -> """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1","https://council.example.com/report/2"],"reason":"Fetching reports","items":[{"title":"Traffic Filter","extract":"Extract about traffic filter"}]}"""
+                2 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Extract about cycle lane"}]}"""
+                3 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Bus Route","extract":"Extract about bus route"}]}"""
+                else -> error("Unexpected call $callCount")
+            }
+        }
+        val orchestrator = Orchestrator(scraper, llm, LoggingResultProcessor(), maxIterations = 5)
+
+        val result = orchestrator.triageAgenda("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15")
+
+        assertEquals(3, callCount)
+        assertEquals(true, result?.relevant)
+        assertEquals(3, result?.items?.size)
+        val titles = result?.items?.map { it.title }?.toSet()
+        assertEquals(setOf("Traffic Filter", "Cycle Lane", "Bus Route"), titles)
+    }
+
+    @Test
     fun `phase 3 rejects plain fetch response`() = runBlocking {
         val scraper = webScraper(
             mapOf(

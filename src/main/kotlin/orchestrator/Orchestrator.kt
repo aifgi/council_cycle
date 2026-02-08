@@ -135,7 +135,13 @@ class Orchestrator(
             when (response) {
                 is PhaseResponse.AgendaTriaged -> {
                     response.items.associateByTo(accumulatedItems) { it.title }
-                    return response.copy(items = accumulatedItems.values)
+                    if (urlQueue.isEmpty()) {
+                        return response.copy(items = accumulatedItems.values)
+                    }
+                    logger.info(
+                        "Phase 3: Triage agenda — LLM returned agenda_triaged but {} URL(s) remain in queue, continuing",
+                        urlQueue.size,
+                    )
                 }
                 is PhaseResponse.AgendaFetch -> {
                     response.items.associateByTo(accumulatedItems) { it.title }
