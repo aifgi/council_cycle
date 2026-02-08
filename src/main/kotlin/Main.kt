@@ -7,7 +7,11 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
+import orchestrator.AnalyzeExtractPhase
+import orchestrator.FindCommitteePagesPhase
+import orchestrator.FindMeetingsPhase
 import orchestrator.Orchestrator
+import orchestrator.TriageAgendaPhase
 import processor.ResultProcessor
 import processor.impl.CompositeResultProcessor
 import processor.impl.FileResultProcessor
@@ -68,7 +72,11 @@ fun main(args: Array<String>) {
             }
             CompositeResultProcessor(processors)
         }
-        single { Orchestrator(get(), get(), get()) }
+        single { FindCommitteePagesPhase(get(), get()) }
+        single { FindMeetingsPhase(get(), get()) }
+        single { TriageAgendaPhase(get(), get()) }
+        single { AnalyzeExtractPhase(get(), get()) }
+        single { Orchestrator(get(), get(), get(), get(), get()) }
     }
 
     val koinApp = startKoin {

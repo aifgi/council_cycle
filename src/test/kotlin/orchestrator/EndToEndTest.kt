@@ -93,7 +93,14 @@ class EndToEndTest {
 
         val processed = mutableListOf<List<Scheme>>()
         val processor = ResultProcessor { _, _, schemes -> processed.add(schemes) }
-        val orchestrator = Orchestrator(mockWebScraper(), llm, processor, maxIterations = 5)
+        val scraper = mockWebScraper()
+        val orchestrator = Orchestrator(
+            FindCommitteePagesPhase(scraper, llm, maxIterations = 5),
+            FindMeetingsPhase(scraper, llm, maxIterations = 5),
+            TriageAgendaPhase(scraper, llm, maxIterations = 5),
+            AnalyzeExtractPhase(scraper, llm),
+            processor,
+        )
 
         orchestrator.processCouncil(councilConfig)
 
@@ -115,7 +122,14 @@ class EndToEndTest {
 
         val processed = mutableListOf<List<Scheme>>()
         val processor = ResultProcessor { _, _, schemes -> processed.add(schemes) }
-        val orchestrator = Orchestrator(mockWebScraper(), llm, processor, maxIterations = 5)
+        val scraper = mockWebScraper()
+        val orchestrator = Orchestrator(
+            FindCommitteePagesPhase(scraper, llm, maxIterations = 5),
+            FindMeetingsPhase(scraper, llm, maxIterations = 5),
+            TriageAgendaPhase(scraper, llm, maxIterations = 5),
+            AnalyzeExtractPhase(scraper, llm),
+            processor,
+        )
 
         orchestrator.processCouncil(councilConfig)
 
