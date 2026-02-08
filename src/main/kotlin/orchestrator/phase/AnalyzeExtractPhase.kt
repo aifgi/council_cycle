@@ -1,6 +1,11 @@
-package orchestrator
+package orchestrator.phase
 
 import llm.LlmClient
+import orchestrator.Meeting
+import orchestrator.Orchestrator
+import orchestrator.PhaseResponse
+import orchestrator.Scheme
+import orchestrator.buildPhase4Prompt
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
 
@@ -15,7 +20,7 @@ data class AnalyzeExtractInput(
 class AnalyzeExtractPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val heavyModel: String = Orchestrator.DEFAULT_HEAVY_MODEL,
+    private val heavyModel: String = Orchestrator.Companion.DEFAULT_HEAVY_MODEL,
 ) : BasePhase(webScraper, llmClient), Phase<AnalyzeExtractInput, List<Scheme>> {
 
     override val name = "Phase 4: Analyze extract"

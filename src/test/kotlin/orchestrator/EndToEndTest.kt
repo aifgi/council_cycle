@@ -11,6 +11,10 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.MockLlmClient
+import orchestrator.phase.AnalyzeExtractPhase
+import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindMeetingsPhase
+import orchestrator.phase.TriageAgendaPhase
 import org.junit.jupiter.api.Tag
 import processor.ResultProcessor
 import scraper.ContentExtractor

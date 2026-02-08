@@ -9,6 +9,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.runBlocking
 import llm.MockLlmClient
+import orchestrator.phase.AnalyzeExtractInput
+import orchestrator.phase.AnalyzeExtractPhase
+import orchestrator.phase.FindCommitteePagesInput
+import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindMeetingsInput
+import orchestrator.phase.FindMeetingsPhase
+import orchestrator.phase.TriageAgendaInput
+import orchestrator.phase.TriageAgendaPhase
 import processor.ResultProcessor
 import scraper.ContentExtractor
 import scraper.WebScraper
@@ -130,7 +138,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 3)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
@@ -148,7 +162,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 3)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(false, result?.relevant)
         assertEquals(0, result?.items?.size)
@@ -173,7 +193,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 3)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(2, callCount)
         assertEquals(true, result?.relevant)
@@ -254,7 +280,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 3)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(1, result?.items?.size)
         assertEquals("Updated detailed extract from report", result?.items?.first()?.extract)
@@ -270,7 +302,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 2)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
@@ -298,7 +336,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 5)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertEquals(3, callCount)
         assertEquals(true, result?.relevant)
@@ -319,7 +363,13 @@ class OrchestratorTest {
         }
         val phase = TriageAgendaPhase(scraper, llm, maxIterations = 3)
 
-        val result = phase.execute(TriageAgendaInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"))
+        val result = phase.execute(
+            TriageAgendaInput(
+                "https://council.example.com/agenda/1",
+                "Transport Committee",
+                "2025-01-15"
+            )
+        )
 
         assertNull(result)
     }

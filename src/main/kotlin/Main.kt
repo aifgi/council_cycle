@@ -7,11 +7,11 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.LlmClient
-import orchestrator.AnalyzeExtractPhase
-import orchestrator.FindCommitteePagesPhase
-import orchestrator.FindMeetingsPhase
+import orchestrator.phase.AnalyzeExtractPhase
+import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindMeetingsPhase
 import orchestrator.Orchestrator
-import orchestrator.TriageAgendaPhase
+import orchestrator.phase.TriageAgendaPhase
 import processor.ResultProcessor
 import processor.impl.CompositeResultProcessor
 import processor.impl.FileResultProcessor
