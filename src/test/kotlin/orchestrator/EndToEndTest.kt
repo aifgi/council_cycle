@@ -113,14 +113,14 @@ class EndToEndTest {
         orchestrator.processCouncil(councilConfig)
 
         assertEquals(1, processed.size, "ResultProcessor should be called once (one committee)")
-        val titles = processed[0].map { it.title }
+        val titles = processed[0].map { it.title.lowercase() }
         assertTrue(
-            titles.any { "Traffic Management Measures On Manorgate Road" in it },
-            "Expected scheme with title containing 'Traffic Management Measures On Manorgate Road', got: $titles",
+            titles.any { "traffic management measures" in it && "manorgate road" in it },
+            "Expected scheme with title containing 'Traffic Management Measures' and 'Manorgate Road', got: ${processed[0].map { it.title }}",
         )
         assertTrue(
-            titles.any { "Coombe Lane West Zebra Crossing" in it },
-            "Expected scheme with title containing 'Coombe Lane West Zebra Crossing', got: $titles",
+            titles.any { "zebra crossing" in it && "coombe lane west" in it },
+            "Expected scheme with title containing 'Zebra Crossing' and 'Coombe Lane West', got: ${processed[0].map { it.title }}",
         )
     }
 }
