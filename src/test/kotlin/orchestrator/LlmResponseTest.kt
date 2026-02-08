@@ -5,16 +5,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-class PhaseResponseTest {
+class LlmResponseTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun `deserializes fetch response`() {
         val raw = """{"type":"fetch","urls":["https://example.com/committees"],"reason":"Following link"}"""
-        val response = json.decodeFromString<PhaseResponse>(raw)
+        val response = json.decodeFromString<LlmResponse>(raw)
         assertEquals(
-            PhaseResponse.Fetch(
+            LlmResponse.Fetch(
                 urls = listOf("https://example.com/committees"),
                 reason = "Following link",
             ),
@@ -25,9 +25,9 @@ class PhaseResponseTest {
     @Test
     fun `deserializes committee_pages_found response`() {
         val raw = """{"type":"committee_pages_found","committees":[{"name":"Planning","url":"https://example.com/planning"}]}"""
-        val response = json.decodeFromString<PhaseResponse>(raw)
+        val response = json.decodeFromString<LlmResponse>(raw)
         assertEquals(
-            PhaseResponse.CommitteePagesFound(
+            LlmResponse.CommitteePagesFound(
                 committees = listOf(CommitteeUrl(name = "Planning", url = "https://example.com/planning")),
             ),
             response,
@@ -45,7 +45,7 @@ class PhaseResponseTest {
               ]
             }
         """.trimIndent()
-        val response = json.decodeFromString<PhaseResponse>(raw) as PhaseResponse.MeetingsFound
+        val response = json.decodeFromString<LlmResponse>(raw) as LlmResponse.MeetingsFound
         assertEquals(2, response.meetings.size)
         assertEquals("2026-03-15", response.meetings[0].date)
         assertEquals("Planning Meeting", response.meetings[0].title)
@@ -57,7 +57,7 @@ class PhaseResponseTest {
     @Test
     fun `deserializes meetings_found with missing meetingUrl`() {
         val raw = """{"type":"meetings_found","meetings":[{"date":"2026-01-01","title":"Meeting"}]}"""
-        val response = json.decodeFromString<PhaseResponse>(raw) as PhaseResponse.MeetingsFound
+        val response = json.decodeFromString<LlmResponse>(raw) as LlmResponse.MeetingsFound
         assertEquals(1, response.meetings.size)
         assertNull(response.meetings[0].meetingUrl)
     }
@@ -78,7 +78,7 @@ class PhaseResponseTest {
               ]
             }
         """.trimIndent()
-        val response = json.decodeFromString<PhaseResponse>(raw) as PhaseResponse.AgendaAnalyzed
+        val response = json.decodeFromString<LlmResponse>(raw) as LlmResponse.AgendaAnalyzed
         assertEquals(1, response.schemes.size)
         assertEquals("New Cycle Lane on High Street", response.schemes[0].title)
         assertEquals("cycle lanes", response.schemes[0].topic)
@@ -90,7 +90,7 @@ class PhaseResponseTest {
     @Test
     fun `deserializes agenda_analyzed with empty schemes`() {
         val raw = """{"type":"agenda_analyzed","schemes":[]}"""
-        val response = json.decodeFromString<PhaseResponse>(raw) as PhaseResponse.AgendaAnalyzed
+        val response = json.decodeFromString<LlmResponse>(raw) as LlmResponse.AgendaAnalyzed
         assertEquals(0, response.schemes.size)
     }
 }

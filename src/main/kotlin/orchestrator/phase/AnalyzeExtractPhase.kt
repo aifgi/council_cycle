@@ -3,7 +3,7 @@ package orchestrator.phase
 import llm.LlmClient
 import orchestrator.Meeting
 import orchestrator.Orchestrator
-import orchestrator.PhaseResponse
+import orchestrator.LlmResponse
 import orchestrator.Scheme
 import orchestrator.buildPhase4Prompt
 import org.slf4j.LoggerFactory
@@ -30,7 +30,7 @@ class AnalyzeExtractPhase(
         val prompt = buildPhase4Prompt(input.extract)
         val rawResponse = llmClient.generate(prompt.system, prompt.user, heavyModel)
         val response = parseResponse(rawResponse) ?: return null
-        return (response as? PhaseResponse.AgendaAnalyzed)?.schemes?.map {
+        return (response as? LlmResponse.AgendaAnalyzed)?.schemes?.map {
             it.copy(
                 meetingDate = input.meeting.date,
                 committeeName = input.committeeName,

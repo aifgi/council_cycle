@@ -2,7 +2,7 @@ package orchestrator.phase
 
 import llm.LlmClient
 import orchestrator.Orchestrator
-import orchestrator.PhaseResponse
+import orchestrator.LlmResponse
 import orchestrator.buildPhase1Prompt
 import scraper.WebScraper
 
@@ -28,7 +28,7 @@ class FindCommitteePagesPhase(
             maxIterations = maxIterations,
             buildPrompt = { content -> buildPhase1Prompt(input.committeeNames, content) },
             extractResult = { response ->
-                (response as? PhaseResponse.CommitteePagesFound)
+                (response as? LlmResponse.CommitteePagesFound)
                     ?.committees
                     ?.associate { it.name to it.url }
             },

@@ -2,7 +2,7 @@ package orchestrator.phase
 
 import llm.LlmClient
 import orchestrator.Orchestrator
-import orchestrator.PhaseResponse
+import orchestrator.LlmResponse
 import orchestrator.TriagedItem
 import orchestrator.buildPhase3Prompt
 import orchestrator.resolveUrls
@@ -22,11 +22,11 @@ class TriageAgendaPhase(
     llmClient: LlmClient,
     private val lightModel: String = Orchestrator.Companion.DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = Orchestrator.Companion.DEFAULT_MAX_PHASE3_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<TriageAgendaInput, PhaseResponse.AgendaTriaged> {
+) : BasePhase(webScraper, llmClient), Phase<TriageAgendaInput, LlmResponse.AgendaTriaged> {
 
     override val name = "Phase 3: Triage agenda"
 
-    override suspend fun execute(input: TriageAgendaInput): PhaseResponse.AgendaTriaged? {
+    override suspend fun execute(input: TriageAgendaInput): LlmResponse.AgendaTriaged? {
         val urlQueue = mutableListOf(input.agendaUrl)
         val accumulatedItems = mutableMapOf<String, TriagedItem>()
         var fetchReason: String? = null
@@ -55,7 +55,7 @@ class TriageAgendaPhase(
                 ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
 
             when (response) {
-                is PhaseResponse.AgendaTriaged -> {
+                is LlmResponse.AgendaTriaged -> {
                     response.items.associateByTo(accumulatedItems) { it.title }
                     if (urlQueue.isEmpty()) {
                         return response.copy(items = accumulatedItems.values)
@@ -65,7 +65,7 @@ class TriageAgendaPhase(
                         name, urlQueue.size,
                     )
                 }
-                is PhaseResponse.AgendaFetch -> {
+                is LlmResponse.AgendaFetch -> {
                     response.items.associateByTo(accumulatedItems) { it.title }
                     fetchReason = response.reason
                     urlQueue.addAll(response.urls)
@@ -86,7 +86,7 @@ class TriageAgendaPhase(
                 "{} — max iterations ({}) reached, returning {} accumulated items",
                 name, maxIterations, accumulatedItems.size,
             )
-            return PhaseResponse.AgendaTriaged(relevant = true, items = accumulatedItems.values)
+            return LlmResponse.AgendaTriaged(relevant = true, items = accumulatedItems.values)
         }
 
         logger.warn("{} — max iterations ({}) reached with no results", name, maxIterations)

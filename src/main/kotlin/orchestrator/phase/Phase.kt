@@ -2,7 +2,7 @@ package orchestrator.phase
 
 import kotlinx.serialization.json.Json
 import llm.LlmClient
-import orchestrator.PhaseResponse
+import orchestrator.LlmResponse
 import orchestrator.SplitPrompt
 import orchestrator.resolveUrls
 import org.slf4j.LoggerFactory
@@ -20,13 +20,13 @@ abstract class BasePhase(
     private val logger = LoggerFactory.getLogger(this::class.java)
     protected val json = Json { ignoreUnknownKeys = true }
 
-    protected fun parseResponse(raw: String): PhaseResponse? {
+    protected fun parseResponse(raw: String): LlmResponse? {
         val jsonString = raw
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```")
             .trim()
         return try {
-            json.decodeFromString<PhaseResponse>(jsonString)
+            json.decodeFromString<LlmResponse>(jsonString)
         } catch (e: Exception) {
             logger.error("Failed to parse LLM response: {}", e.message)
             logger.error("Raw LLM response:\n{}", raw)
@@ -40,7 +40,7 @@ abstract class BasePhase(
         model: String,
         maxIterations: Int,
         buildPrompt: (String) -> SplitPrompt,
-        extractResult: (PhaseResponse) -> R?,
+        extractResult: (LlmResponse) -> R?,
     ): R? {
         val urlQueue = mutableListOf(startUrl)
 
@@ -65,7 +65,7 @@ abstract class BasePhase(
             if (result != null) return result
 
             when (response) {
-                is PhaseResponse.Fetch -> {
+                is LlmResponse.Fetch -> {
                     logger.info("{} — LLM requests {} more URL(s): {}", phaseName, response.urls.size, response.reason)
                     urlQueue.addAll(response.urls)
                 }

@@ -32,7 +32,7 @@ The orchestrator runs a 4-phase pipeline per council. Phases 1-2 use a reusable 
 
 **Prompt structure:** Prompts are split into `SplitPrompt(system, user)`. The `system` part contains static instructions (cached via `CacheControlEphemeral`), the `user` part contains dynamic page content. This enables Anthropic prompt caching — subsequent navigation loop iterations within a phase hit the cache on the system prompt. Prompt builders are in `Prompts.kt`.
 
-`PhaseResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePagesFound` (phase 1 result, list of `CommitteeUrl`), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaFetch` (phase 3 intermediate — follow URLs + carry forward `TriagedItem` objects), `AgendaTriaged` (phase 3 final result, relevant flag + list of `TriagedItem`), `AgendaAnalyzed` (phase 4 result, contains `Scheme` objects).
+`LlmResponse` — sealed interface with JSON `"type"` discriminator. Variants: `Fetch` (follow more URLs), `CommitteePagesFound` (phase 1 result, list of `CommitteeUrl`), `MeetingsFound` (phase 2 result, contains `Meeting` objects), `AgendaFetch` (phase 3 intermediate — follow URLs + carry forward `TriagedItem` objects), `AgendaTriaged` (phase 3 final result, relevant flag + list of `TriagedItem`), `AgendaAnalyzed` (phase 4 result, contains `Scheme` objects).
 
 ### Other Packages
 

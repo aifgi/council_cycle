@@ -3,7 +3,7 @@ package orchestrator.phase
 import llm.LlmClient
 import orchestrator.Meeting
 import orchestrator.Orchestrator
-import orchestrator.PhaseResponse
+import orchestrator.LlmResponse
 import orchestrator.buildPhase2Prompt
 import scraper.WebScraper
 
@@ -32,7 +32,7 @@ class FindMeetingsPhase(
             buildPrompt = { content ->
                 buildPhase2Prompt(input.committeeName, input.dateFrom, input.dateTo, content)
             },
-            extractResult = { response -> (response as? PhaseResponse.MeetingsFound)?.meetings },
+            extractResult = { response -> (response as? LlmResponse.MeetingsFound)?.meetings },
         )
     }
 }
