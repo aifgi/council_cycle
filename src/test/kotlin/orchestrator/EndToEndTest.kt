@@ -27,6 +27,7 @@ class EndToEndTest {
         "$base/mgCommitteeStructure.aspx" to "CommitteeStructure.html",
         "$base/mgCommitteeDetails.aspx?ID=711" to "CommitteeDetails.html",
         "$base/ieListMeetings.aspx?CommitteeId=711" to "BrowseMeetings.html",
+        "$base/ieListDocuments.aspx?CId=711&MId=10220&Ver=4" to "Agenda_Irrelevant.html",
         "$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4" to "Agenda_412.html",
         "$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4" to "Agenda_151.html",
         "$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf" to "ZebraCrossing.pdf",
@@ -58,7 +59,7 @@ class EndToEndTest {
         name = "Kingston",
         siteUrl = "$base/mgCommitteeStructure.aspx",
         committees = listOf("Kingston and North Kingston Neighbourhood Committee"),
-        dateFrom = "2025-12-01",
+        dateFrom = "2025-11-01",
         dateTo = "2026-01-31",
     )
 
