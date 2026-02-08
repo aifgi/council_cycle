@@ -21,7 +21,7 @@ Council Cycle is a Kotlin JVM application that scrapes UK council websites for c
 
 ### 4-Phase Pipeline (orchestrator/)
 
-The orchestrator runs a 4-phase pipeline per council. Phases 1-2 use a reusable `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations). Phase 3 has its own iterative loop with item accumulation (max 10 iterations). Phase 4 is a single LLM call.
+The orchestrator runs a 4-phase pipeline per council. Each phase is a separate class in `orchestrator/phase/`, implementing `Phase<I, O>` and extending `BasePhase`. `BasePhase` provides `navigationLoop()` (iterative fetch-ask-follow, max 5 iterations) and `parseResponse()`. Phases 1-2 use `navigationLoop()`. Phase 3 has its own iterative loop with item accumulation (max 10 iterations). Phase 4 is a single LLM call.
 
 1. **Phase 1: Find Committee Pages** — navigates from council site URL and finds pages for all committees at once. Returns `CommitteePagesFound` with a list of `CommitteeUrl` objects. Uses light model (Haiku).
 2. **Phase 2: Find Meetings** — locates meetings with agenda links within a date range. Uses light model (Haiku).
