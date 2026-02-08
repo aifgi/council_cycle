@@ -29,18 +29,24 @@ class EndToEndTest {
         "$base/ieListMeetings.aspx?CommitteeId=711" to "BrowseMeetings.html",
         "$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4" to "Agenda_412.html",
         "$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4" to "Agenda_151.html",
+        "$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf" to "ZebraCrossing.pdf",
+        "$base/documents/s112217/Petition%20TMO%20Manorgate%20Rd%20Report.pdf" to "ManorgatePetition.pdf",
     )
 
-    private fun loadHtml(resource: String): String =
-        javaClass.getResource("/$resource")!!.readText()
+    private fun loadResource(resource: String): ByteArray =
+        javaClass.getResource("/$resource")!!.readBytes()
 
-    private val htmlResponses = urlToResource.mapValues { (_, resource) -> loadHtml(resource) }
+    private val resourceBytes = urlToResource.mapValues { (_, resource) -> loadResource(resource) }
+
+    private fun contentTypeFor(url: String): String =
+        if (url.endsWith(".pdf")) "application/pdf" else "text/html"
 
     private fun mockWebScraper(): WebScraper {
         val engine = MockEngine { request ->
-            val body = htmlResponses[request.url.toString()]
+            val url = request.url.toString()
+            val body = resourceBytes[url]
             if (body != null) {
-                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "text/html"))
+                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, contentTypeFor(url)))
             } else {
                 respond("Not Found", HttpStatusCode.NotFound)
             }
