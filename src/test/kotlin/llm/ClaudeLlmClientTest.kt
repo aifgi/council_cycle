@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.MockWebServer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertContains
 
 class ClaudeLlmClientTest {
 
@@ -81,6 +82,22 @@ class ClaudeLlmClientTest {
         } finally {
             server.shutdown()
         }
+    }
+
+    @Test
+    fun `generate throws when user prompt exceeds token limit`() = runBlocking {
+        val anthropicClient = AnthropicOkHttpClientAsync.builder()
+            .baseUrl("http://localhost:1")
+            .apiKey("test-key")
+            .maxRetries(0)
+            .build()
+        val client = ClaudeLlmClient(anthropicClient)
+        val hugePrompt = "a".repeat(50_001 * 4)
+
+        val ex = assertFailsWith<IllegalArgumentException> {
+            client.generate("System instructions", hugePrompt, "claude-sonnet-4-5-20250929")
+        }
+        assertContains(ex.message!!, "too large")
     }
 
     @Test

@@ -10,6 +10,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.await
 import org.slf4j.LoggerFactory
 
+private const val MAX_USER_PROMPT_ESTIMATED_TOKENS = 50_000
+
 class ClaudeLlmClient(
     private val client: AnthropicClientAsync,
     private val retryDelaysMs: List<Long> = listOf(30_000L, 60_000L, 60_000L),
@@ -18,6 +20,14 @@ class ClaudeLlmClient(
     private val logger = LoggerFactory.getLogger(ClaudeLlmClient::class.java)
 
     override suspend fun generate(systemPrompt: String, userPrompt: String, model: String): String {
+        val estimatedTokens = userPrompt.length / 4
+        if (estimatedTokens > MAX_USER_PROMPT_ESTIMATED_TOKENS) {
+            throw IllegalArgumentException(
+                "User prompt is too large: ~$estimatedTokens estimated tokens " +
+                    "(limit: $MAX_USER_PROMPT_ESTIMATED_TOKENS). This is likely a bug.",
+            )
+        }
+
         val params = MessageCreateParams.builder()
             .maxTokens(4096L)
             .systemOfTextBlockParams(
