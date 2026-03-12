@@ -305,18 +305,24 @@ If you need to follow links to find the agenda document, respond with:
 
 Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
 
-If you found a link to the agenda document (e.g. agenda PDF or agenda HTML page), respond with:
+If you found a link to the agenda document, respond with:
 {
   "type": "agenda_found",
   "agendaUrl": "@1"
 }
 
+Prefer a frontsheet or agenda cover document over a full agenda pack if both are available.
 If no separate agenda document link exists on this page, return the meeting page URL itself as agendaUrl.""".trimIndent()
 
     return SplitPrompt(system, "Meeting page URL: $meetingUrl\n\n$pageContent")
 }
 
-fun buildIdentifyAgendaItemsPrompt(committeeName: String, meetingDate: String, pageContent: String): SplitPrompt {
+fun buildIdentifyAgendaItemsPrompt(
+    committeeName: String,
+    meetingDate: String,
+    pageContent: String,
+    fetchReason: String? = null,
+): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
     val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
@@ -325,37 +331,39 @@ fun buildIdentifyAgendaItemsPrompt(committeeName: String, meetingDate: String, p
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
 
-Your job is to identify agenda items that relate to the topics of interest.
+Your job is to identify agenda items on this page that relate to the topics of interest.
 For each relevant item, provide its title and a brief description of what it is about.
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object. Do not include any reasoning or other text. The JSON must have a "type" field.
 
-If you need to follow links to get the agenda content (e.g. next page of a PDF), respond with:
-{
-  "type": "fetch",
-  "urls": ["@1"],
-  "reason": "Brief explanation"
-}
-
-Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
-
-If you have reviewed the agenda, respond with:
+Always respond with:
 {
   "type": "agenda_items_identified",
   "items": [
     {"title": "Item title", "description": "Brief description of what this item is about"}
-  ]
+  ],
+  "fetchUrls": ["@1"]
 }
 
-If no relevant items are found, respond with:
-{
-  "type": "agenda_items_identified",
-  "items": []
-}""".trimIndent()
+- "items": relevant items found on this page. If none, use an empty array.
+- "fetchUrls": if you have NOT yet reached the end of the agenda items section and need to read
+  more pages (e.g. next chunk of a PDF), include those URLs here. Otherwise omit or use [].
 
-    return SplitPrompt(system, "This is the agenda of a meeting of $committeeName on $meetingDate.\n\n$pageContent")
+IMPORTANT: Only include fetchUrls if the agenda items list is clearly incomplete (i.e. truncated
+mid-list). Do NOT fetch further pages if you have reached the end of the agenda items section,
+even if the document continues with appendices, reports, or other supporting content.""".trimIndent()
+
+    val userParts = mutableListOf("This is the agenda of a meeting of $committeeName on $meetingDate.")
+
+    if (fetchReason != null) {
+        userParts.add("You previously requested this page because: $fetchReason")
+    }
+
+    userParts.add(pageContent)
+
+    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
 fun buildEnrichAgendaItemsPrompt(
