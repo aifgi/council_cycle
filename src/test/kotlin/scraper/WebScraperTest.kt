@@ -15,6 +15,7 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts
 import java.io.ByteArrayOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -136,6 +137,101 @@ class WebScraperTest {
         assertTrue(result.text.contains("Meeting Agenda"))
     }
 
+    @Test
+    fun `fetchAndExtract returns first 25 pages and next-page token for large PDF`() = runBlocking {
+        val pdfBytes = createPdfWithPages(30)
+        val mockEngine = MockEngine { _ ->
+            respond(
+                content = pdfBytes,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
+            )
+        }
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
+
+        val result = scraper.fetchAndExtract("https://example.com/large.pdf")
+
+        assertNotNull(result)
+        assertTrue(result.text.contains("Page 1"))
+        assertTrue(result.text.contains("Page 25"))
+        assertFalse(result.text.contains("Page 26"))
+        val nextPageUrl = result.urlRegistry.resolve("@1")
+        assertTrue(nextPageUrl.startsWith("https://pdf-page.internal/"))
+        assertTrue(nextPageUrl.endsWith("/26"))
+    }
+
+    @Test
+    fun `fetchAndExtract returns remaining pages from cache without HTTP request`() = runBlocking {
+        val pdfBytes = createPdfWithPages(30)
+        var requestCount = 0
+        val mockEngine = MockEngine { _ ->
+            requestCount++
+            respond(
+                content = pdfBytes,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
+            )
+        }
+        val pdfCache = PdfCache()
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor(), pdfCache)
+
+        val firstResult = scraper.fetchAndExtract("https://example.com/large.pdf")
+        assertNotNull(firstResult)
+        val nextPageUrl = firstResult.urlRegistry.resolve("@1")
+
+        val secondResult = scraper.fetchAndExtract(nextPageUrl)
+
+        assertNotNull(secondResult)
+        assertTrue(secondResult.text.contains("Page 26"))
+        assertTrue(secondResult.text.contains("Page 30"))
+        assertFalse(secondResult.text.contains("Page 25"))
+        assertEquals(1, requestCount)
+    }
+
+    @Test
+    fun `fetchAndExtract returns null for next-page URL after releaseDocument`() = runBlocking {
+        val pdfBytes = createPdfWithPages(30)
+        val mockEngine = MockEngine { _ ->
+            respond(
+                content = pdfBytes,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
+            )
+        }
+        val pdfCache = PdfCache()
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor(), pdfCache)
+
+        val firstResult = scraper.fetchAndExtract("https://example.com/large.pdf")
+        assertNotNull(firstResult)
+        val nextPageUrl = firstResult.urlRegistry.resolve("@1")
+
+        scraper.releaseDocument("https://example.com/large.pdf")
+
+        val secondResult = scraper.fetchAndExtract(nextPageUrl)
+        assertNull(secondResult)
+    }
+
+    @Test
+    fun `fetchAndExtract does not append next-page token for PDF within page limit`() = runBlocking {
+        val pdfBytes = createPdfWithPages(10)
+        val mockEngine = MockEngine { _ ->
+            respond(
+                content = pdfBytes,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
+            )
+        }
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
+
+        val result = scraper.fetchAndExtract("https://example.com/small.pdf")
+
+        assertNotNull(result)
+        assertTrue(result.text.contains("Page 1"))
+        assertTrue(result.text.contains("Page 10"))
+        assertFalse(result.text.contains("pdf-page.internal"))
+        assertEquals("@1", result.urlRegistry.resolve("@1"))
+    }
+
     private fun createPdfWithText(text: String): ByteArray {
         val output = ByteArrayOutputStream()
         PDDocument().use { doc ->
@@ -147,6 +243,25 @@ class WebScraperTest {
                 cs.newLineAtOffset(50f, 700f)
                 cs.showText(text)
                 cs.endText()
+            }
+            doc.save(output)
+        }
+        return output.toByteArray()
+    }
+
+    private fun createPdfWithPages(pageCount: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        PDDocument().use { doc ->
+            repeat(pageCount) { i ->
+                val page = PDPage()
+                doc.addPage(page)
+                PDPageContentStream(doc, page).use { cs ->
+                    cs.beginText()
+                    cs.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), 12f)
+                    cs.newLineAtOffset(50f, 700f)
+                    cs.showText("Page ${i + 1}")
+                    cs.endText()
+                }
             }
             doc.save(output)
         }
