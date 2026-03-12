@@ -12,9 +12,11 @@ import kotlinx.coroutines.runBlocking
 import llm.ClaudeLlmClient
 import llm.MockLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
+import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesPhase
 import orchestrator.phase.FindMeetingsPhase
-import orchestrator.phase.TriageAgendaPhase
+import orchestrator.phase.IdentifyAgendaItemsPhase
 import org.junit.jupiter.api.Tag
 import processor.ResultProcessor
 import scraper.ContentExtractor
@@ -79,18 +81,26 @@ class EndToEndTest {
                 2 -> """{"type":"fetch","urls":["$base/ieListMeetings.aspx?CommitteeId=711"],"reason":"Following browse meetings link"}"""
                 // Phase 2, iter 2: BrowseMeetings → extract meetings in date range
                 3 -> """{"type":"meetings_found","meetings":[{"date":"2025-11-20","title":"Kingston and North Kingston Neighbourhood Committee","meetingUrl":"$base/ieListDocuments.aspx?CId=711&MId=10220&Ver=4"},{"date":"2025-12-04","title":"Kingston and North Kingston Neighbourhood Committee (Cancelled)","meetingUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"},{"date":"2026-01-15","title":"Kingston and North Kingston Neighbourhood Committee","meetingUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}]}"""
-                // Phase 3: Triage Agenda_Irrelevant (November meeting) → not relevant
-                4 -> """{"type":"agenda_triaged","relevant":false}"""
-                // Phase 3: Triage Agenda_412 (cancelled meeting) → not relevant
-                5 -> """{"type":"agenda_triaged","relevant":false}"""
-                // Phase 3, iter 1: Triage Agenda_151 (real meeting) → fetch both PDF reports
-                6 -> """{"type":"agenda_item_fetch","urls":["$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf","$base/documents/s112217/Petition%20TMO%20Manorgate%20Rd%20Report.pdf"],"reason":"Fetching detailed reports for relevant agenda items","items":[]}"""
-                // Phase 3, iter 2: ZebraCrossing.pdf → relevant item
-                7 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Coombe Lane West Zebra Crossing","extract":"Consultation results for proposed zebra crossing on Coombe Lane West near junction with Traps Lane."}]}"""
-                // Phase 3, iter 3: ManorgatePetition.pdf → relevant item
-                8 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Manorgate Road Traffic Management","extract":"Petition response regarding traffic management measures on Manorgate Road and Wolverton Avenue."}]}"""
+                // Phase 3A: Find agenda for November meeting (no separate agenda doc)
+                4 -> """{"type":"agenda_found","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10220&Ver=4"}"""
+                // Phase 3B: Identify items in Agenda_Irrelevant → no relevant items
+                5 -> """{"type":"agenda_items_identified","items":[]}"""
+                // Phase 3A: Find agenda for cancelled December meeting
+                6 -> """{"type":"agenda_found","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10161&Ver=4"}"""
+                // Phase 3B: Identify items in Agenda_412 → no relevant items
+                7 -> """{"type":"agenda_items_identified","items":[]}"""
+                // Phase 3A: Find agenda for January meeting
+                8 -> """{"type":"agenda_found","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}"""
+                // Phase 3B: Identify items in Agenda_151 → two relevant items
+                9 -> """{"type":"agenda_items_identified","items":[{"title":"Coombe Lane West Zebra Crossing","description":"Consultation results for proposed zebra crossing"},{"title":"Manorgate Road Traffic Management","description":"Petition response regarding traffic management measures"}]}"""
+                // Phase 3C, iter 1: fetch both PDF reports
+                10 -> """{"type":"agenda_item_fetch","urls":["$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf","$base/documents/s112217/Petition%20TMO%20Manorgate%20Rd%20Report.pdf"],"reason":"Fetching detailed reports for relevant agenda items","items":[]}"""
+                // Phase 3C, iter 2: ZebraCrossing.pdf → relevant item
+                11 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Coombe Lane West Zebra Crossing","extract":"Consultation results for proposed zebra crossing on Coombe Lane West near junction with Traps Lane."}]}"""
+                // Phase 3C, iter 3: ManorgatePetition.pdf → relevant item
+                12 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Manorgate Road Traffic Management","extract":"Petition response regarding traffic management measures on Manorgate Road and Wolverton Avenue."}]}"""
                 // Phase 4: Analyze extract → schemes found
-                9 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
+                13 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
                 else -> error("Unexpected LLM call $callCount")
             }
         }
@@ -101,14 +111,16 @@ class EndToEndTest {
         val orchestrator = Orchestrator(
             FindCommitteePagesPhase(scraper, llm, maxIterations = 5),
             FindMeetingsPhase(scraper, llm, maxIterations = 5),
-            TriageAgendaPhase(scraper, llm, maxIterations = 5),
+            FindAgendaPhase(scraper, llm, maxIterations = 5),
+            IdentifyAgendaItemsPhase(scraper, llm, maxIterations = 5),
+            EnrichAgendaItemsPhase(scraper, llm, maxIterations = 5),
             AnalyzeExtractPhase(scraper, llm),
             processor,
         )
 
         orchestrator.processCouncil(councilConfig)
 
-        assertEquals(9, callCount, "Expected exactly 9 LLM calls")
+        assertEquals(13, callCount, "Expected exactly 13 LLM calls")
         assertEquals(1, processed.size, "ResultProcessor should be called once (one committee)")
         assertEquals(2, processed[0].size, "Expected 2 schemes from the January meeting")
         assertEquals("Manorgate Road Traffic Management", processed[0][0].title)
@@ -130,7 +142,9 @@ class EndToEndTest {
         val orchestrator = Orchestrator(
             FindCommitteePagesPhase(scraper, llm, maxIterations = 5),
             FindMeetingsPhase(scraper, llm, maxIterations = 5),
-            TriageAgendaPhase(scraper, llm, maxIterations = 5),
+            FindAgendaPhase(scraper, llm, maxIterations = 5),
+            IdentifyAgendaItemsPhase(scraper, llm, maxIterations = 5),
+            EnrichAgendaItemsPhase(scraper, llm, maxIterations = 5),
             AnalyzeExtractPhase(scraper, llm),
             processor,
         )

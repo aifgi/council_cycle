@@ -9,10 +9,12 @@ import llm.ClaudeLlmClient
 import llm.LlmClient
 import llm.LoggingLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
+import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesPhase
 import orchestrator.phase.FindMeetingsPhase
+import orchestrator.phase.IdentifyAgendaItemsPhase
 import orchestrator.Orchestrator
-import orchestrator.phase.TriageAgendaPhase
 import processor.ResultProcessor
 import processor.impl.CompositeResultProcessor
 import processor.impl.FileResultProcessor
@@ -79,9 +81,11 @@ fun main(args: Array<String>) {
         }
         single { FindCommitteePagesPhase(get(), get()) }
         single { FindMeetingsPhase(get(), get()) }
-        single { TriageAgendaPhase(get(), get()) }
+        single { FindAgendaPhase(get(), get()) }
+        single { IdentifyAgendaItemsPhase(get(), get()) }
+        single { EnrichAgendaItemsPhase(get(), get()) }
         single { AnalyzeExtractPhase(get(), get()) }
-        single { Orchestrator(get(), get(), get(), get(), get()) }
+        single { Orchestrator(get(), get(), get(), get(), get(), get(), get()) }
     }
 
     val koinApp = startKoin {

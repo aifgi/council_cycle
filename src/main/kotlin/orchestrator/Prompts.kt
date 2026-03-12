@@ -287,6 +287,164 @@ If no relevant items are found in the agenda text, respond with:
     return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
+fun buildPhase3aPrompt(meetingUrl: String, pageContent: String): SplitPrompt {
+    val system = """You are helping find the agenda document for a council committee meeting.
+
+The page shown is a council meeting page. Your job is to find a link to the agenda document for this meeting.
+
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+
+If you need to follow links to find the agenda document, respond with:
+{
+  "type": "fetch",
+  "urls": ["@1"],
+  "reason": "Brief explanation of why you want to fetch these URLs"
+}
+
+Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
+
+If you found a link to the agenda document (e.g. agenda PDF or agenda HTML page), respond with:
+{
+  "type": "agenda_found",
+  "agendaUrl": "@1"
+}
+
+If no separate agenda document link exists on this page, return the meeting page URL itself as agendaUrl.""".trimIndent()
+
+    return SplitPrompt(system, "Meeting page URL: $meetingUrl\n\n$pageContent")
+}
+
+fun buildPhase3bPrompt(committeeName: String, meetingDate: String, pageContent: String): SplitPrompt {
+    val topicsList = TOPICS.joinToString(", ")
+    val excludedList = EXCLUDED_TOPICS.joinToString(", ")
+
+    val system = """You are identifying relevant agenda items from a council committee meeting agenda.
+
+Topics of interest: $topicsList
+Excluded topics (do not include): $excludedList
+
+Your job is to identify agenda items that relate to the topics of interest.
+For each relevant item, provide its title and a brief description of what it is about.
+
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object. Do not include any reasoning or other text. The JSON must have a "type" field.
+
+If you need to follow links to get the agenda content (e.g. next page of a PDF), respond with:
+{
+  "type": "fetch",
+  "urls": ["@1"],
+  "reason": "Brief explanation"
+}
+
+Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
+
+If you have reviewed the agenda, respond with:
+{
+  "type": "agenda_items_identified",
+  "items": [
+    {"title": "Item title", "description": "Brief description of what this item is about"}
+  ]
+}
+
+If no relevant items are found, respond with:
+{
+  "type": "agenda_items_identified",
+  "items": []
+}""".trimIndent()
+
+    return SplitPrompt(system, "This is the agenda of a meeting of $committeeName on $meetingDate.\n\n$pageContent")
+}
+
+fun buildPhase3cPrompt(
+    committeeName: String,
+    meetingDate: String,
+    identifiedItems: List<IdentifiedAgendaItem>,
+    pageContent: String,
+    fetchReason: String? = null,
+    accumulatedItems: Collection<TriagedItem> = emptyList(),
+): SplitPrompt {
+    val system = """You are building detailed extracts for pre-identified agenda items from a council committee meeting.
+
+The items to enrich are listed in the user message. Your job is to fetch item-specific documents
+linked from the meeting page and build detailed extracts for each item.
+
+SCOPE RULES
+
+Only fetch documents that are specifically linked to one of the identified items.
+Do NOT fetch full agenda packs or combined document packs.
+Do NOT navigate to other meetings or committee pages.
+
+For each item, build a DETAILED extract including:
+- what is being proposed
+- locations
+- consultation outcomes
+- decisions (quote verbatim)
+- vote counts and conditions
+
+OUTPUT RULES
+
+URLs are represented as short references such as @1, @2.
+Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object.
+Do NOT include reasoning, explanations, or any text outside the JSON.
+Do NOT add fields other than those explicitly shown below.
+
+FETCH RESPONSE FORMAT
+
+If you need to fetch item-specific documents to complete your analysis, respond with:
+{
+  "type": "agenda_item_fetch",
+  "urls": ["@1", "@2"],
+  "reason": "Detailed explanation of what information you expect to find and why it is needed",
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract for this already-completed item"}
+  ]
+}
+
+Rules for agenda_item_fetch:
+- Only include URLs that appeared as links in the page content
+- Only include item-specific documents
+- NEVER include agenda packs or combined packs
+- Choose the most relevant 1–5 links
+- Include in "items" all items already fully analysed
+
+FINAL RESPONSE FORMAT
+
+Once you have gathered enough information, respond with:
+{
+  "type": "agenda_triaged",
+  "relevant": true,
+  "items": [
+    {"title": "Item title", "extract": "Detailed extract with full context"}
+  ]
+}
+
+Include only the items analysed in the current iteration.
+Previously analysed items (if any) will be merged automatically.""".trimIndent()
+
+    val userParts = mutableListOf<String>()
+
+    val itemsList = identifiedItems.joinToString("\n") { "- ${it.title}: ${it.description}" }
+    userParts.add("Meeting of $committeeName on $meetingDate.\n\nItems to enrich:\n$itemsList")
+
+    if (fetchReason != null) {
+        userParts.add("You previously requested this page because: $fetchReason")
+    }
+
+    if (accumulatedItems.isNotEmpty()) {
+        val itemsText = accumulatedItems.joinToString("\n\n") { "## ${it.title}\n${it.extract}" }
+        userParts.add("Items analyzed so far:\n$itemsText")
+    }
+
+    userParts.add(pageContent)
+
+    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
+}
+
 fun buildPhase4Prompt(
     extract: String,
 ): SplitPrompt {

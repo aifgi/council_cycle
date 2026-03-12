@@ -1,32 +1,34 @@
 package orchestrator.phase
 
 import llm.LlmClient
+import orchestrator.IdentifiedAgendaItem
 import orchestrator.LlmResponse
 import orchestrator.TriagedItem
-import orchestrator.buildPhase3Prompt
+import orchestrator.buildPhase3cPrompt
 import orchestrator.resolveUrls
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
 
-private val logger = LoggerFactory.getLogger(TriageAgendaPhase::class.java)
+private val logger = LoggerFactory.getLogger(EnrichAgendaItemsPhase::class.java)
 
-data class TriageAgendaInput(
-    val agendaUrl: String,
+data class EnrichAgendaItemsInput(
+    val meetingUrl: String,
+    val identifiedItems: List<IdentifiedAgendaItem>,
     val committeeName: String,
     val meetingDate: String,
 )
 
-class TriageAgendaPhase(
+class EnrichAgendaItemsPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = DEFAULT_TRIAGE_MAX_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<TriageAgendaInput, LlmResponse.AgendaTriaged> {
+) : BasePhase(webScraper, llmClient), Phase<EnrichAgendaItemsInput, LlmResponse.AgendaTriaged> {
 
-    override val name = "Phase 3: Triage agenda"
+    override val name = "Phase 5: Enrich agenda items"
 
-    override suspend fun execute(input: TriageAgendaInput): LlmResponse.AgendaTriaged? {
-        val urlQueue = mutableListOf(input.agendaUrl)
+    override suspend fun execute(input: EnrichAgendaItemsInput): LlmResponse.AgendaTriaged? {
+        val urlQueue = mutableListOf(input.meetingUrl)
         val fetchedUrls = mutableSetOf<String>()
         val accumulatedItems = mutableMapOf<String, TriagedItem>()
         var fetchReason: String? = null
@@ -43,12 +45,13 @@ class TriageAgendaPhase(
                     continue
                 }
 
-                val prompt = buildPhase3Prompt(
+                val prompt = buildPhase3cPrompt(
                     input.committeeName,
                     input.meetingDate,
+                    input.identifiedItems,
                     conversionResult.text,
                     fetchReason,
-                    accumulatedItems.values
+                    accumulatedItems.values,
                 )
                 logger.trace("LLM Prompt {}", prompt.user)
                 val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)

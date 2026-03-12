@@ -22,7 +22,7 @@ class AnalyzeExtractPhase(
     private val heavyModel: String = DEFAULT_HEAVY_MODEL,
 ) : BasePhase(webScraper, llmClient), Phase<AnalyzeExtractInput, List<Scheme>> {
 
-    override val name = "Phase 4: Analyze extract"
+    override val name = "Phase 6: Analyze extract"
 
     override suspend fun execute(input: AnalyzeExtractInput): List<Scheme>? {
         logger.info("{} for meeting '{}' on {}", name, input.meeting.title, input.meeting.date)

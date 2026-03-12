@@ -46,7 +46,18 @@ sealed interface LlmResponse {
     data class AgendaAnalyzed(
         val schemes: List<Scheme>,
     ) : LlmResponse
+
+    @Serializable
+    @SerialName("agenda_found")
+    data class AgendaFound(val agendaUrl: String) : LlmResponse
+
+    @Serializable
+    @SerialName("agenda_items_identified")
+    data class AgendaItemsIdentified(val items: List<IdentifiedAgendaItem>) : LlmResponse
 }
+
+@Serializable
+data class IdentifiedAgendaItem(val title: String, val description: String)
 
 @Serializable
 data class CommitteeUrl(
@@ -88,4 +99,6 @@ fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (th
     )
     is LlmResponse.AgendaTriaged -> this
     is LlmResponse.AgendaAnalyzed -> this
+    is LlmResponse.AgendaFound -> copy(agendaUrl = resolve(agendaUrl))
+    is LlmResponse.AgendaItemsIdentified -> this
 }
