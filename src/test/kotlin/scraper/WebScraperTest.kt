@@ -157,7 +157,9 @@ class WebScraperTest {
         assertFalse(result.text.contains("Page 26"))
         val nextPageUrl = result.urlRegistry.resolve("@1")
         assertTrue(nextPageUrl.startsWith("https://pdf-page.internal/"))
-        assertTrue(nextPageUrl.endsWith("/26"))
+        val pathParts = nextPageUrl.removePrefix("https://pdf-page.internal/").split("/")
+        assertEquals(2, pathParts.size)
+        assertEquals(26, pathParts[1].toInt())
     }
 
     @Test
@@ -172,8 +174,7 @@ class WebScraperTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
             )
         }
-        val pdfCache = PdfCache()
-        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor(), pdfCache)
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
 
         val firstResult = scraper.fetchAndExtract("https://example.com/large.pdf")
         assertNotNull(firstResult)
@@ -198,8 +199,7 @@ class WebScraperTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/pdf"),
             )
         }
-        val pdfCache = PdfCache()
-        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor(), pdfCache)
+        val scraper = WebScraper(HttpClient(mockEngine), ContentExtractor())
 
         val firstResult = scraper.fetchAndExtract("https://example.com/large.pdf")
         assertNotNull(firstResult)
