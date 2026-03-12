@@ -1,3 +1,5 @@
+outputDir: "output"
+debugLlmDir: "output/llm"
 councils:
   - name: "Royal Borough of Kingston Upon Thames"
     siteUrl: "https://moderngov.kingston.gov.uk/mgListCommittees.aspx"
