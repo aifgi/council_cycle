@@ -17,7 +17,7 @@ import java.util.UUID
 
 private val logger = LoggerFactory.getLogger(WebScraper::class.java)
 
-private const val PDF_PAGE_LIMIT = 25
+private const val PDF_PAGE_LIMIT = 5
 private const val PDF_CACHE_DOMAIN = "pdf-page.internal"
 
 class WebScraper(
