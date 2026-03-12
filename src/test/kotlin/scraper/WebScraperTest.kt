@@ -138,8 +138,8 @@ class WebScraperTest {
     }
 
     @Test
-    fun `fetchAndExtract returns first 25 pages and next-page token for large PDF`() = runBlocking {
-        val pdfBytes = createPdfWithPages(30)
+    fun `fetchAndExtract returns first 5 pages and next-page token for large PDF`() = runBlocking {
+        val pdfBytes = createPdfWithPages(10)
         val mockEngine = MockEngine { _ ->
             respond(
                 content = pdfBytes,
@@ -153,18 +153,18 @@ class WebScraperTest {
 
         assertNotNull(result)
         assertTrue(result.text.contains("Page 1"))
-        assertTrue(result.text.contains("Page 25"))
-        assertFalse(result.text.contains("Page 26"))
+        assertTrue(result.text.contains("Page 5"))
+        assertFalse(result.text.contains("Page 6"))
         val nextPageUrl = result.urlRegistry.resolve("@1")
         assertTrue(nextPageUrl.startsWith("https://pdf-page.internal/"))
         val pathParts = nextPageUrl.removePrefix("https://pdf-page.internal/").split("/")
         assertEquals(2, pathParts.size)
-        assertEquals(26, pathParts[1].toInt())
+        assertEquals(6, pathParts[1].toInt())
     }
 
     @Test
     fun `fetchAndExtract returns remaining pages from cache without HTTP request`() = runBlocking {
-        val pdfBytes = createPdfWithPages(30)
+        val pdfBytes = createPdfWithPages(10)
         var requestCount = 0
         val mockEngine = MockEngine { _ ->
             requestCount++
@@ -183,9 +183,9 @@ class WebScraperTest {
         val secondResult = scraper.fetchAndExtract(nextPageUrl)
 
         assertNotNull(secondResult)
-        assertTrue(secondResult.text.contains("Page 26"))
-        assertTrue(secondResult.text.contains("Page 30"))
-        assertFalse(secondResult.text.contains("Page 25"))
+        assertTrue(secondResult.text.contains("Page 6"))
+        assertTrue(secondResult.text.contains("Page 10"))
+        assertFalse(secondResult.text.contains("Page 5"))
         assertEquals(1, requestCount)
     }
 
@@ -213,7 +213,7 @@ class WebScraperTest {
 
     @Test
     fun `fetchAndExtract does not append next-page token for PDF within page limit`() = runBlocking {
-        val pdfBytes = createPdfWithPages(10)
+        val pdfBytes = createPdfWithPages(5)
         val mockEngine = MockEngine { _ ->
             respond(
                 content = pdfBytes,
@@ -227,7 +227,7 @@ class WebScraperTest {
 
         assertNotNull(result)
         assertTrue(result.text.contains("Page 1"))
-        assertTrue(result.text.contains("Page 10"))
+        assertTrue(result.text.contains("Page 5"))
         assertFalse(result.text.contains("pdf-page.internal"))
         assertEquals("@1", result.urlRegistry.resolve("@1"))
     }
