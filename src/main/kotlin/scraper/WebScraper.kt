@@ -92,7 +92,7 @@ class WebScraper(
 
         val docId = UUID.randomUUID().toString()
         var firstChunkKey: String? = null
-        val chunkData = linkedMapOf<String, PdfChunk>()
+        val chunkData = mutableMapOf<String, PdfChunk>()
         try {
             Loader.loadPDF(bytes).use { doc ->
                 val totalPages = doc.numberOfPages
