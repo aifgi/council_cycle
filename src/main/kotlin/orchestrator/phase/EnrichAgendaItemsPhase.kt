@@ -4,7 +4,7 @@ import llm.LlmClient
 import orchestrator.IdentifiedAgendaItem
 import orchestrator.LlmResponse
 import orchestrator.TriagedItem
-import orchestrator.buildPhase3cPrompt
+import orchestrator.buildEnrichAgendaItemsPrompt
 import orchestrator.resolveUrls
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
@@ -45,7 +45,7 @@ class EnrichAgendaItemsPhase(
                     continue
                 }
 
-                val prompt = buildPhase3cPrompt(
+                val prompt = buildEnrichAgendaItemsPrompt(
                     input.committeeName,
                     input.meetingDate,
                     input.identifiedItems,

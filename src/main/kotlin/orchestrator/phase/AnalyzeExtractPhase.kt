@@ -4,7 +4,7 @@ import llm.LlmClient
 import orchestrator.Meeting
 import orchestrator.LlmResponse
 import orchestrator.Scheme
-import orchestrator.buildPhase4Prompt
+import orchestrator.buildAnalyzeExtractPrompt
 import org.slf4j.LoggerFactory
 import scraper.WebScraper
 
@@ -26,7 +26,7 @@ class AnalyzeExtractPhase(
 
     override suspend fun execute(input: AnalyzeExtractInput): List<Scheme>? {
         logger.info("{} for meeting '{}' on {}", name, input.meeting.title, input.meeting.date)
-        val prompt = buildPhase4Prompt(input.extract)
+        val prompt = buildAnalyzeExtractPrompt(input.extract)
         val rawResponse = llmClient.generate(prompt.system, prompt.user, heavyModel)
         val response = parseResponse(rawResponse) ?: return null
         return (response as? LlmResponse.AgendaAnalyzed)?.schemes?.map {

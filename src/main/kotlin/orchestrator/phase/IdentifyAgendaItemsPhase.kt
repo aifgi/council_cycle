@@ -3,7 +3,7 @@ package orchestrator.phase
 import llm.LlmClient
 import orchestrator.IdentifiedAgendaItem
 import orchestrator.LlmResponse
-import orchestrator.buildPhase3bPrompt
+import orchestrator.buildIdentifyAgendaItemsPrompt
 import scraper.WebScraper
 
 data class IdentifyAgendaItemsInput(
@@ -27,7 +27,7 @@ class IdentifyAgendaItemsPhase(
             phaseName = name,
             model = lightModel,
             maxIterations = maxIterations,
-            buildPrompt = { content -> buildPhase3bPrompt(input.committeeName, input.meetingDate, content) },
+            buildPrompt = { content -> buildIdentifyAgendaItemsPrompt(input.committeeName, input.meetingDate, content) },
             extractResult = { (it as? LlmResponse.AgendaItemsIdentified)?.items },
         )
     }

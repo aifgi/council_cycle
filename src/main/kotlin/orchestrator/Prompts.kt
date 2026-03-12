@@ -115,7 +115,7 @@ Return agendaUrl as the link to the meeting page itself (not any documents linke
     return SplitPrompt(system, user)
 }
 
-fun buildPhase3Prompt(
+fun buildLegacyTriageAgendaPrompt(
     committeeName: String,
     meetingDate: String,
     pageContent: String,
@@ -287,7 +287,7 @@ If no relevant items are found in the agenda text, respond with:
     return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
-fun buildPhase3aPrompt(meetingUrl: String, pageContent: String): SplitPrompt {
+fun buildFindAgendaPrompt(meetingUrl: String, pageContent: String): SplitPrompt {
     val system = """You are helping find the agenda document for a council committee meeting.
 
 The page shown is a council meeting page. Your job is to find a link to the agenda document for this meeting.
@@ -316,7 +316,7 @@ If no separate agenda document link exists on this page, return the meeting page
     return SplitPrompt(system, "Meeting page URL: $meetingUrl\n\n$pageContent")
 }
 
-fun buildPhase3bPrompt(committeeName: String, meetingDate: String, pageContent: String): SplitPrompt {
+fun buildIdentifyAgendaItemsPrompt(committeeName: String, meetingDate: String, pageContent: String): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")
     val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
@@ -358,7 +358,7 @@ If no relevant items are found, respond with:
     return SplitPrompt(system, "This is the agenda of a meeting of $committeeName on $meetingDate.\n\n$pageContent")
 }
 
-fun buildPhase3cPrompt(
+fun buildEnrichAgendaItemsPrompt(
     committeeName: String,
     meetingDate: String,
     identifiedItems: List<IdentifiedAgendaItem>,
@@ -445,7 +445,7 @@ Previously analysed items (if any) will be merged automatically.""".trimIndent()
     return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
-fun buildPhase4Prompt(
+fun buildAnalyzeExtractPrompt(
     extract: String,
 ): SplitPrompt {
     val topicsList = TOPICS.joinToString(", ")

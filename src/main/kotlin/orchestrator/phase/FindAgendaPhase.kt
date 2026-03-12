@@ -2,7 +2,7 @@ package orchestrator.phase
 
 import llm.LlmClient
 import orchestrator.LlmResponse
-import orchestrator.buildPhase3aPrompt
+import orchestrator.buildFindAgendaPrompt
 import scraper.WebScraper
 
 data class FindAgendaInput(val meetingUrl: String)
@@ -22,7 +22,7 @@ class FindAgendaPhase(
             phaseName = name,
             model = lightModel,
             maxIterations = maxIterations,
-            buildPrompt = { content -> buildPhase3aPrompt(input.meetingUrl, content) },
+            buildPrompt = { content -> buildFindAgendaPrompt(input.meetingUrl, content) },
             extractResult = { (it as? LlmResponse.AgendaFound)?.agendaUrl },
         )
     }
