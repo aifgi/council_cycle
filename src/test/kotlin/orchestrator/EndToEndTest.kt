@@ -93,12 +93,12 @@ class EndToEndTest {
                 8 -> """{"type":"agenda_found","agendaUrl":"$base/ieListDocuments.aspx?CId=711&MId=10221&Ver=4"}"""
                 // Phase 3B: Identify items in Agenda_151 → two relevant items
                 9 -> """{"type":"agenda_items_identified","items":[{"title":"Coombe Lane West Zebra Crossing","description":"Consultation results for proposed zebra crossing"},{"title":"Manorgate Road Traffic Management","description":"Petition response regarding traffic management measures"}]}"""
-                // Phase 3C, iter 1: fetch both PDF reports
-                10 -> """{"type":"agenda_item_fetch","urls":["$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf","$base/documents/s112217/Petition%20TMO%20Manorgate%20Rd%20Report.pdf"],"reason":"Fetching detailed reports for relevant agenda items","items":[]}"""
-                // Phase 3C, iter 2: ZebraCrossing.pdf → relevant item
-                11 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Coombe Lane West Zebra Crossing","extract":"Consultation results for proposed zebra crossing on Coombe Lane West near junction with Traps Lane."}]}"""
-                // Phase 3C, iter 3: ManorgatePetition.pdf → relevant item
-                12 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Manorgate Road Traffic Management","extract":"Petition response regarding traffic management measures on Manorgate Road and Wolverton Avenue."}]}"""
+                // Phase 3C, iter 1: meeting page → both items request their PDFs
+                10 -> """{"type":"agenda_items_enriched","items":[{"title":"Coombe Lane West Zebra Crossing","action":"fetch","urls":["$base/documents/s112215/Coombe%20Lane%20West%20Zebra%20Crossing%20consultation%20results.pdf"],"reason":"Fetching consultation results PDF"},{"title":"Manorgate Road Traffic Management","action":"fetch","urls":["$base/documents/s112217/Petition%20TMO%20Manorgate%20Rd%20Report.pdf"],"reason":"Fetching petition response PDF"}]}"""
+                // Phase 3C, iter 2: ZebraCrossing.pdf → summarize Zebra, Manorgate still pending
+                11 -> """{"type":"agenda_items_enriched","items":[{"title":"Coombe Lane West Zebra Crossing","action":"summary","extract":"Consultation results for proposed zebra crossing on Coombe Lane West near junction with Traps Lane."},{"title":"Manorgate Road Traffic Management","action":"fetch","urls":[],"reason":"Awaiting Manorgate PDF"}]}"""
+                // Phase 3C, iter 3: ManorgatePetition.pdf → summarize Manorgate
+                12 -> """{"type":"agenda_items_enriched","items":[{"title":"Manorgate Road Traffic Management","action":"summary","extract":"Petition response regarding traffic management measures on Manorgate Road and Wolverton Avenue."}]}"""
                 // Phase 4: Analyze extract → schemes found
                 13 -> """{"type":"agenda_analyzed","schemes":[{"title":"Manorgate Road Traffic Management","topic":"traffic filters","summary":"Traffic management scheme for Manorgate Road area","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"},{"title":"Coombe Lane West Zebra Crossing","topic":"public realm improvements","summary":"Proposed zebra crossing on Coombe Lane West","meetingDate":"2026-01-15","committeeName":"Kingston and North Kingston Neighbourhood Committee"}]}"""
                 else -> error("Unexpected LLM call $callCount")

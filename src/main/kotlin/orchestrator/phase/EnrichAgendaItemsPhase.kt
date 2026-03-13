@@ -6,10 +6,7 @@ import orchestrator.LlmResponse
 import orchestrator.TriagedItem
 import orchestrator.buildEnrichAgendaItemsPrompt
 import orchestrator.resolveUrls
-import org.slf4j.LoggerFactory
 import scraper.WebScraper
-
-private val logger = LoggerFactory.getLogger(EnrichAgendaItemsPhase::class.java)
 
 data class EnrichAgendaItemsInput(
     val meetingUrl: String,
@@ -30,11 +27,12 @@ class EnrichAgendaItemsPhase(
     override suspend fun execute(input: EnrichAgendaItemsInput): LlmResponse.AgendaTriaged? {
         val urlQueue = mutableListOf(input.meetingUrl)
         val fetchedUrls = mutableSetOf<String>()
-        val accumulatedItems = mutableMapOf<String, TriagedItem>()
-        var fetchReason: String? = null
+        val completedItems = mutableMapOf<String, TriagedItem>()
+        val pendingItems = input.identifiedItems.toMutableList()
 
         try {
             for (iteration in 1..maxIterations) {
+                if (pendingItems.isEmpty()) break
                 val url = urlQueue.removeFirstOrNull() ?: break
                 fetchedUrls.add(url)
                 logger.info("{} — iteration {}: fetching {}", name, iteration, url)
@@ -48,10 +46,8 @@ class EnrichAgendaItemsPhase(
                 val prompt = buildEnrichAgendaItemsPrompt(
                     input.committeeName,
                     input.meetingDate,
-                    input.identifiedItems,
+                    pendingItems,
                     conversionResult.text,
-                    fetchReason,
-                    accumulatedItems.values,
                 )
                 logger.trace("LLM Prompt {}", prompt.user)
                 val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
@@ -60,24 +56,26 @@ class EnrichAgendaItemsPhase(
                     ?.resolveUrls(conversionResult.urlRegistry::resolve) ?: return null
 
                 when (response) {
-                    is LlmResponse.AgendaTriaged -> {
-                        response.items.associateByTo(accumulatedItems) { it.title }
-                        if (urlQueue.isEmpty()) {
-                            return response.copy(items = accumulatedItems.values)
+                    is LlmResponse.AgendaItemsEnriched -> {
+                        for (item in response.items) {
+                            when (item.action) {
+                                "summary" -> {
+                                    val extract = item.extract
+                                    if (extract != null) {
+                                        completedItems[item.title] = TriagedItem(item.title, extract)
+                                        pendingItems.removeIf { it.title == item.title }
+                                    }
+                                }
+                                "fetch" -> {
+                                    val newUrls = item.urls.filterNot { it in fetchedUrls }
+                                    urlQueue.addAll(newUrls)
+                                    logger.info(
+                                        "{} — item '{}' requests {} URL(s): {}",
+                                        name, item.title, newUrls.size, item.reason,
+                                    )
+                                }
+                            }
                         }
-                        logger.info(
-                            "{} — LLM returned agenda_triaged but {} URL(s) remain in queue, continuing",
-                            name, urlQueue.size,
-                        )
-                    }
-                    is LlmResponse.AgendaFetch -> {
-                        response.items.associateByTo(accumulatedItems) { it.title }
-                        fetchReason = response.reason
-                        urlQueue.addAll(response.urls)
-                        logger.info(
-                            "{} — LLM requests {} more URL(s): {}. Items so far: {}",
-                            name, response.urls.size, response.reason, accumulatedItems.size,
-                        )
                     }
                     else -> {
                         logger.warn("{} — unexpected response type: {}", name, response::class.simpleName)
@@ -86,16 +84,19 @@ class EnrichAgendaItemsPhase(
                 }
             }
 
-            if (accumulatedItems.isNotEmpty()) {
-                logger.warn(
-                    "{} — max iterations ({}) reached, returning {} accumulated items",
-                    name, maxIterations, accumulatedItems.size,
-                )
-                return LlmResponse.AgendaTriaged(relevant = true, items = accumulatedItems.values)
+            if (completedItems.isEmpty()) {
+                logger.warn("{} — no items summarized", name)
+                return null
             }
 
-            logger.warn("{} — max iterations ({}) reached with no results", name, maxIterations)
-            return null
+            if (pendingItems.isNotEmpty()) {
+                logger.warn(
+                    "{} — returning {} item(s); {} item(s) not summarized: {}",
+                    name, completedItems.size, pendingItems.size, pendingItems.map { it.title },
+                )
+            }
+
+            return LlmResponse.AgendaTriaged(relevant = true, items = completedItems.values)
         } finally {
             fetchedUrls.forEach { webScraper.releaseDocument(it) }
         }

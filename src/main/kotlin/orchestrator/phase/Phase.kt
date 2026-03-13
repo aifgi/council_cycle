@@ -22,7 +22,7 @@ abstract class BasePhase(
     protected val webScraper: WebScraper,
     protected val llmClient: LlmClient,
 ) {
-    private val logger = LoggerFactory.getLogger(this::class.java)
+    protected val logger = LoggerFactory.getLogger(this::class.java)
     protected val json = Json { ignoreUnknownKeys = true }
 
     protected fun parseResponse(raw: String): LlmResponse? {

@@ -17,6 +17,9 @@ val EXCLUDED_TOPICS = listOf(
     "work programme",
 )
 
+private val TOPICS_STRING = TOPICS.joinToString(", ")
+private val EXCLUDED_TOPICS_STRING = EXCLUDED_TOPICS.joinToString(", ")
+
 fun buildPhase1Prompt(
     committeeNames: List<String>,
     pageContent: String,
@@ -152,8 +155,8 @@ fun buildIdentifyAgendaItemsPrompt(
     pageContent: String,
     fetchReason: String? = null,
 ): SplitPrompt {
-    val topicsList = TOPICS.joinToString(", ")
-    val excludedList = EXCLUDED_TOPICS.joinToString(", ")
+    val topicsList = TOPICS_STRING
+    val excludedList = EXCLUDED_TOPICS_STRING
 
     val system = """You are identifying relevant agenda items from a council committee meeting agenda.
 
@@ -201,23 +204,22 @@ Do NOT re-fetch pages you have already read. Only fetch URLs for pages not yet s
 fun buildEnrichAgendaItemsPrompt(
     committeeName: String,
     meetingDate: String,
-    identifiedItems: List<IdentifiedAgendaItem>,
+    pendingItems: List<IdentifiedAgendaItem>,
     pageContent: String,
-    fetchReason: String? = null,
-    accumulatedItems: Collection<TriagedItem> = emptyList(),
 ): SplitPrompt {
-    val system = """You are building detailed extracts for pre-identified agenda items from a council committee meeting.
+    val system = """You are enriching pre-identified agenda items from a council committee meeting.
 
-The items to enrich are listed in the user message. Your job is to fetch item-specific documents
-linked from the meeting page and build detailed extracts for each item.
+The items listed below each need a detailed extract built from documents linked on the meeting page.
+For EACH item you must either provide a SUMMARY or request a FETCH.
 
 SCOPE RULES
 
 Only fetch documents that are specifically linked to one of the identified items.
 Do NOT fetch full agenda packs or combined document packs.
 Do NOT navigate to other meetings or committee pages.
+If no specific document is linked for an item, provide a summary with whatever information is available.
 
-For each item, build a DETAILED extract including:
+For each item providing a summary, build a DETAILED extract including:
 - what is being proposed
 - locations
 - consultation outcomes
@@ -231,75 +233,41 @@ Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object.
 Do not include any reasoning, explanation, or any text outside the JSON.
-Do not add fields other than those explicitly shown below.
 
-FETCH RESPONSE FORMAT
-
-If you need to fetch item-specific documents to complete your analysis, respond with:
 {
-  "type": "agenda_item_fetch",
-  "urls": ["@1", "@2"],
-  "reason": "Detailed explanation of what information you expect to find and why it is needed",
+  "type": "agenda_items_enriched",
   "items": [
-    {"title": "Item title", "extract": "Detailed extract for this already-completed item"}
+    {
+      "title": "Exact item title as given",
+      "action": "summary",
+      "extract": "Detailed extract with full context"
+    },
+    {
+      "title": "Exact item title as given",
+      "action": "fetch",
+      "urls": ["@1"],
+      "reason": "Why this specific document is needed for this item"
+    }
   ]
 }
 
-Rules for agenda_item_fetch:
-- Only include URLs that appeared as links in the page content
-- Only include item-specific documents
-- NEVER include agenda packs or combined packs
-- Choose the most relevant 1–5 links
-- Include in "items" all items already fully analysed
+Rules:
+- Every item in the input list MUST appear in the output exactly once
+- Use "summary" with a best-effort extract if no relevant linked document exists for the item
+- For "fetch": only include URLs that appeared as links in the page content; choose 1–3 most relevant links
+- NEVER fetch agenda packs or combined document packs""".trimIndent()
 
-FINAL RESPONSE FORMAT
+    val itemsList = pendingItems.joinToString("\n") { "- ${it.title}: ${it.description}" }
+    val user = "Meeting of $committeeName on $meetingDate.\n\nItems to enrich:\n$itemsList\n\n---\n\n$pageContent"
 
-Once you have gathered enough information, respond with:
-{
-  "type": "agenda_triaged",
-  "relevant": true,
-  "items": [
-    {"title": "Item title", "extract": "Detailed extract with full context"}
-  ]
-}
-
-Include only the items analysed in the current iteration.
-Previously analysed items (if any) will be merged automatically.
-
-NO RELEVANT CONTENT
-
-If after reviewing the documents you determine that none of the identified items have relevant content
-(e.g. the documents are empty, inaccessible, or contain no useful information), respond with:
-{
-  "type": "agenda_triaged",
-  "relevant": false,
-  "items": []
-}""".trimIndent()
-
-    val userParts = mutableListOf<String>()
-
-    val itemsList = identifiedItems.joinToString("\n") { "- ${it.title}: ${it.description}" }
-    userParts.add("Meeting of $committeeName on $meetingDate.\n\nItems to enrich:\n$itemsList")
-
-    if (fetchReason != null) {
-        userParts.add("You previously requested this page because: $fetchReason")
-    }
-
-    if (accumulatedItems.isNotEmpty()) {
-        val itemsText = accumulatedItems.joinToString("\n\n") { "## ${it.title}\n${it.extract}" }
-        userParts.add("Items analyzed so far:\n$itemsText")
-    }
-
-    userParts.add(pageContent)
-
-    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
+    return SplitPrompt(system, user)
 }
 
 fun buildAnalyzeExtractPrompt(
     extract: String,
 ): SplitPrompt {
-    val topicsList = TOPICS.joinToString(", ")
-    val excludedList = EXCLUDED_TOPICS.joinToString(", ")
+    val topicsList = TOPICS_STRING
+    val excludedList = EXCLUDED_TOPICS_STRING
 
     val system = """You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
 

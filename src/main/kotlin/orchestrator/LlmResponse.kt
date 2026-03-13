@@ -26,19 +26,17 @@ sealed interface LlmResponse {
     ) : LlmResponse
 
     @Serializable
-    @SerialName("agenda_item_fetch")
-    data class AgendaFetch(
-        val urls: List<String>,
-        val reason: String,
-        val items: List<TriagedItem> = emptyList(),
-    ) : LlmResponse
-
-    @Serializable
     @SerialName("agenda_triaged")
     data class AgendaTriaged(
         val relevant: Boolean,
         val items: Collection<TriagedItem> = emptyList(),
         val summary: String? = null,
+    ) : LlmResponse
+
+    @Serializable
+    @SerialName("agenda_items_enriched")
+    data class AgendaItemsEnriched(
+        val items: List<EnrichedItem>,
     ) : LlmResponse
 
     @Serializable
@@ -92,9 +90,17 @@ data class TriagedItem(
     val extract: String,
 )
 
+@Serializable
+data class EnrichedItem(
+    val title: String,
+    val action: String,
+    val extract: String? = null,
+    val urls: List<String> = emptyList(),
+    val reason: String? = null,
+)
+
 fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (this) {
     is LlmResponse.Fetch -> copy(urls = urls.map { resolve(it) })
-    is LlmResponse.AgendaFetch -> copy(urls = urls.map { resolve(it) })
     is LlmResponse.CommitteePagesFound -> copy(
         committees = committees.map { it.copy(url = resolve(it.url)) }
     )
@@ -103,6 +109,9 @@ fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (th
     )
     is LlmResponse.AgendaTriaged -> this
     is LlmResponse.AgendaAnalyzed -> this
+    is LlmResponse.AgendaItemsEnriched -> copy(
+        items = items.map { it.copy(urls = it.urls.map { url -> resolve(url) }) }
+    )
     is LlmResponse.AgendaFound -> copy(agendaUrl = resolve(agendaUrl))
     is LlmResponse.AgendaItemsIdentified -> copy(fetchUrls = fetchUrls.map { resolve(it) })
 }

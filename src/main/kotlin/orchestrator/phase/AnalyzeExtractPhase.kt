@@ -5,10 +5,7 @@ import orchestrator.Meeting
 import orchestrator.LlmResponse
 import orchestrator.Scheme
 import orchestrator.buildAnalyzeExtractPrompt
-import org.slf4j.LoggerFactory
 import scraper.WebScraper
-
-private val logger = LoggerFactory.getLogger(AnalyzeExtractPhase::class.java)
 
 data class AnalyzeExtractInput(
     val extract: String,

@@ -5,10 +5,7 @@ import orchestrator.IdentifiedAgendaItem
 import orchestrator.LlmResponse
 import orchestrator.buildIdentifyAgendaItemsPrompt
 import orchestrator.resolveUrls
-import org.slf4j.LoggerFactory
 import scraper.WebScraper
-
-private val logger = LoggerFactory.getLogger(IdentifyAgendaItemsPhase::class.java)
 
 data class IdentifyAgendaItemsInput(
     val agendaUrl: String,

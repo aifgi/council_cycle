@@ -262,7 +262,7 @@ class OrchestratorTest {
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Agenda items</p></body></html>"),
         )
         val llm = MockLlmClient { _, _ ->
-            """{"type":"agenda_triaged","relevant":true,"items":[{"title":"High Street Cycle Lane","extract":"Item 1: High Street Cycle Lane - new protected lane"}]}"""
+            """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"New protected lane on High Street"}]}"""
         }
         val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
 
@@ -277,14 +277,15 @@ class OrchestratorTest {
 
         assertEquals(true, result?.relevant)
         assertEquals(1, result?.items?.size)
-        assertEquals("High Street Cycle Lane", result?.items?.first()?.title)
+        assertEquals("Cycle Lane", result?.items?.first()?.title)
+        assertEquals("New protected lane on High Street", result?.items?.first()?.extract)
     }
 
     @Test
-    fun `enrich phase iterates with agenda_item_fetch and accumulates items`() = runBlocking {
+    fun `enrich phase fetches document and collects summary on second iteration`() = runBlocking {
         val scraper = webScraper(
             mapOf(
-                "https://council.example.com/agenda/1" to "<html><body><p>Agenda with items</p></body></html>",
+                "https://council.example.com/agenda/1" to "<html><body><a href=\"https://council.example.com/report/1\">Report</a></body></html>",
                 "https://council.example.com/report/1" to "<html><body><p>Report details</p></body></html>",
             ),
         )
@@ -292,9 +293,9 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, _ ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Fetching report for Cycle Lane item","items":[{"title":"Traffic Filter","extract":"Detailed extract about traffic filter scheme"}]}"""
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"fetch","urls":["https://council.example.com/report/1"],"reason":"Need report for details"}]}"""
             } else {
-                """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Detailed extract about cycle lane from report"}]}"""
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"Detailed extract from report"}]}"""
             }
         }
         val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
@@ -310,16 +311,19 @@ class OrchestratorTest {
 
         assertEquals(2, callCount)
         assertEquals(true, result?.relevant)
-        assertEquals(2, result?.items?.size)
-        val titles = result?.items?.map { it.title }?.toSet()
-        assertEquals(setOf("Traffic Filter", "Cycle Lane"), titles)
+        assertEquals(1, result?.items?.size)
+        assertEquals("Detailed extract from report", result?.items?.first()?.extract)
     }
 
     @Test
-    fun `enrich phase includes fetch reason in subsequent prompt`() = runBlocking {
+    fun `enrich phase omits completed items from subsequent prompt`() = runBlocking {
+        val identifiedItems = listOf(
+            IdentifiedAgendaItem("Cycle Lane", "New cycle lane"),
+            IdentifiedAgendaItem("LTN Scheme", "Low traffic neighbourhood"),
+        )
         val scraper = webScraper(
             mapOf(
-                "https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>",
+                "https://council.example.com/agenda/1" to "<html><body><a href=\"https://council.example.com/report/1\">Report</a></body></html>",
                 "https://council.example.com/report/1" to "<html><body><p>Report</p></body></html>",
             ),
         )
@@ -328,75 +332,10 @@ class OrchestratorTest {
         val llm = MockLlmClient { _, userPrompt ->
             callCount++
             if (callCount == 1) {
-                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need to read the full cycle lane report","items":[]}"""
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"Cycle lane extract"},{"title":"LTN Scheme","action":"fetch","urls":["https://council.example.com/report/1"],"reason":"Need LTN report"}]}"""
             } else {
                 secondUserPrompt = userPrompt
-                """{"type":"agenda_triaged","relevant":false}"""
-            }
-        }
-        val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
-
-        phase.execute(
-            EnrichAgendaItemsInput(
-                "https://council.example.com/agenda/1",
-                sampleIdentifiedItems,
-                "Transport Committee",
-                "2025-01-15",
-            )
-        )
-
-        assertTrue(secondUserPrompt!!.contains("Need to read the full cycle lane report"))
-    }
-
-    @Test
-    fun `enrich phase includes accumulated items in subsequent prompt`() = runBlocking {
-        val scraper = webScraper(
-            mapOf(
-                "https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>",
-                "https://council.example.com/report/1" to "<html><body><p>Report</p></body></html>",
-            ),
-        )
-        var secondUserPrompt: String? = null
-        var callCount = 0
-        val llm = MockLlmClient { _, userPrompt ->
-            callCount++
-            if (callCount == 1) {
-                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Traffic Filter","extract":"Existing extract"}]}"""
-            } else {
-                secondUserPrompt = userPrompt
-                """{"type":"agenda_triaged","relevant":true,"items":[]}"""
-            }
-        }
-        val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
-
-        phase.execute(
-            EnrichAgendaItemsInput(
-                "https://council.example.com/agenda/1",
-                sampleIdentifiedItems,
-                "Transport Committee",
-                "2025-01-15",
-            )
-        )
-
-        assertTrue(secondUserPrompt!!.contains("Traffic Filter"))
-        assertTrue(secondUserPrompt!!.contains("Existing extract"))
-    }
-
-    @Test
-    fun `enrich phase merges items preferring newer version`() = runBlocking {
-        val scraper = webScraper(
-            mapOf(
-                "https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>",
-                "https://council.example.com/report/1" to "<html><body><p>Report</p></body></html>",
-            ),
-        )
-        var callCount = 0
-        val llm = MockLlmClient { _, _ ->
-            callCount++
-            if (callCount == 1) {
-                """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1"],"reason":"Need report","items":[{"title":"Cycle Lane","extract":"Brief extract"}]}"""
-            } else {
-                """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Updated detailed extract from report"}]}"""
+                """{"type":"agenda_items_enriched","items":[{"title":"LTN Scheme","action":"summary","extract":"LTN extract"}]}"""
             }
         }
         val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
@@ -404,23 +343,24 @@ class OrchestratorTest {
         val result = phase.execute(
             EnrichAgendaItemsInput(
                 "https://council.example.com/agenda/1",
-                sampleIdentifiedItems,
+                identifiedItems,
                 "Transport Committee",
                 "2025-01-15",
             )
         )
 
-        assertEquals(1, result?.items?.size)
-        assertEquals("Updated detailed extract from report", result?.items?.first()?.extract)
+        assertEquals(2, result?.items?.size)
+        assertTrue(secondUserPrompt!!.contains("LTN Scheme"))
+        assertTrue(!secondUserPrompt!!.contains("Cycle Lane"))
     }
 
     @Test
-    fun `enrich phase returns accumulated items on max iterations`() = runBlocking {
+    fun `enrich phase returns null when no items summarized`() = runBlocking {
         val scraper = webScraper(
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Agenda</p></body></html>"),
         )
         val llm = MockLlmClient { _, _ ->
-            """{"type":"agenda_item_fetch","urls":["https://council.example.com/agenda/1"],"reason":"Need more","items":[{"title":"Cycle Lane","extract":"Some extract"}]}"""
+            """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"fetch","urls":[],"reason":"Need more"}]}"""
         }
         val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 2)
 
@@ -433,46 +373,44 @@ class OrchestratorTest {
             )
         )
 
-        assertEquals(true, result?.relevant)
-        assertEquals(1, result?.items?.size)
-        assertEquals("Cycle Lane", result?.items?.first()?.title)
+        assertNull(result)
     }
 
     @Test
-    fun `enrich phase continues processing queued URLs when LLM returns agenda_triaged early`() = runBlocking {
+    fun `enrich phase returns partial results when max iterations reached with some summaries`() = runBlocking {
+        val identifiedItems = listOf(
+            IdentifiedAgendaItem("Cycle Lane", "New cycle lane"),
+            IdentifiedAgendaItem("LTN Scheme", "Low traffic neighbourhood"),
+        )
         val scraper = webScraper(
             mapOf(
-                "https://council.example.com/agenda/1" to "<html><body><p>Agenda with items</p></body></html>",
-                "https://council.example.com/report/1" to "<html><body><p>Report 1</p></body></html>",
-                "https://council.example.com/report/2" to "<html><body><p>Report 2</p></body></html>",
+                "https://council.example.com/agenda/1" to "<html><body><a href=\"https://council.example.com/report/1\">Report</a></body></html>",
+                "https://council.example.com/report/1" to "<html><body><p>Report</p></body></html>",
             ),
         )
         var callCount = 0
         val llm = MockLlmClient { _, _ ->
             callCount++
-            when (callCount) {
-                1 -> """{"type":"agenda_item_fetch","urls":["https://council.example.com/report/1","https://council.example.com/report/2"],"reason":"Fetching reports","items":[{"title":"Traffic Filter","extract":"Extract about traffic filter"}]}"""
-                2 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane","extract":"Extract about cycle lane"}]}"""
-                3 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Bus Route","extract":"Extract about bus route"}]}"""
-                else -> error("Unexpected call $callCount")
+            if (callCount == 1) {
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"Cycle lane extract"},{"title":"LTN Scheme","action":"fetch","urls":["https://council.example.com/report/1"],"reason":"Need report"}]}"""
+            } else {
+                """{"type":"agenda_items_enriched","items":[{"title":"LTN Scheme","action":"fetch","urls":[],"reason":"Still need more"}]}"""
             }
         }
-        val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 5)
+        val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 2)
 
         val result = phase.execute(
             EnrichAgendaItemsInput(
                 "https://council.example.com/agenda/1",
-                sampleIdentifiedItems,
+                identifiedItems,
                 "Transport Committee",
                 "2025-01-15",
             )
         )
 
-        assertEquals(3, callCount)
         assertEquals(true, result?.relevant)
-        assertEquals(3, result?.items?.size)
-        val titles = result?.items?.map { it.title }?.toSet()
-        assertEquals(setOf("Traffic Filter", "Cycle Lane", "Bus Route"), titles)
+        assertEquals(1, result?.items?.size)
+        assertEquals("Cycle Lane", result?.items?.first()?.title)
     }
 
     @Test
@@ -600,7 +538,7 @@ class OrchestratorTest {
                 2 -> """{"type":"meetings_found","meetings":[{"date":"2026-03-15","title":"Planning Meeting","meetingUrl":"https://council.example.com/agenda/1"}]}"""
                 3 -> """{"type":"agenda_found","agendaUrl":"https://council.example.com/agenda/1"}"""
                 4 -> """{"type":"agenda_items_identified","items":[{"title":"Cycle Lane proposal","description":"Proposed cycle lane on High Street"}]}"""
-                5 -> """{"type":"agenda_triaged","relevant":true,"items":[{"title":"Cycle Lane proposal","extract":"Item 1: Cycle Lane proposal - detailed description of the proposed cycle lane on High Street"}]}"""
+                5 -> """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane proposal","action":"summary","extract":"Item 1: Cycle Lane proposal - detailed description of the proposed cycle lane on High Street"}]}"""
                 6 -> """{"type":"agenda_analyzed","schemes":[{"title":"Cycle Lane","topic":"cycle lanes","summary":"New lane"}]}"""
                 else -> error("Unexpected call $callCount")
             }
