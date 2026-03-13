@@ -58,7 +58,7 @@ class IdentifyAgendaItemsPhase(
                     if (response.fetchUrls.isEmpty()) {
                         return accumulatedItems.values.toList()
                     }
-                    fetchReason = "continuing to read agenda"
+                    fetchReason = response.fetchReason
                     urlQueue.addAll(response.fetchUrls)
                     logger.info(
                         "{} — LLM requests {} more page(s). Items so far: {}",

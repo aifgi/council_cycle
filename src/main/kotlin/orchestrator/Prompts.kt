@@ -172,12 +172,14 @@ Always respond with:
   "items": [
     {"title": "Item title", "description": "Brief description of what this item is about"}
   ],
-  "fetchUrls": ["@1"]
+  "fetchUrls": ["@1"],
+  "fetchReason": "Brief explanation of why more pages are needed"
 }
 
 - "items": relevant items found on this page. If none, use an empty array.
 - "fetchUrls": if you have NOT yet reached the end of the agenda items section and need to read
   more pages (e.g. next chunk of a PDF), include those URLs here. Otherwise omit or use [].
+- "fetchReason": required when fetchUrls is non-empty; explain why more pages are needed.
 
 IMPORTANT: Only include fetchUrls if the agenda items list is clearly incomplete (i.e. truncated
 mid-list). Do NOT fetch further pages if you have reached the end of the agenda items section,

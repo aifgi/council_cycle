@@ -56,6 +56,7 @@ sealed interface LlmResponse {
     data class AgendaItemsIdentified(
         val items: List<IdentifiedAgendaItem>,
         val fetchUrls: List<String> = emptyList(),
+        val fetchReason: String? = null,
     ) : LlmResponse
 }
 
