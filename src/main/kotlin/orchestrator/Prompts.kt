@@ -432,7 +432,17 @@ Once you have gathered enough information, respond with:
 }
 
 Include only the items analysed in the current iteration.
-Previously analysed items (if any) will be merged automatically.""".trimIndent()
+Previously analysed items (if any) will be merged automatically.
+
+NO RELEVANT CONTENT
+
+If after reviewing the documents you determine that none of the identified items have relevant content
+(e.g. the documents are empty, inaccessible, or contain no useful information), respond with:
+{
+  "type": "agenda_triaged",
+  "relevant": false,
+  "items": []
+}""".trimIndent()
 
     val userParts = mutableListOf<String>()
 
