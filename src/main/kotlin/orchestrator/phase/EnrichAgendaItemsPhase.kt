@@ -1,6 +1,7 @@
 package orchestrator.phase
 
 import llm.LlmClient
+import orchestrator.EnrichedItem
 import orchestrator.IdentifiedAgendaItem
 import orchestrator.LlmResponse
 import orchestrator.TriagedItem
@@ -58,15 +59,12 @@ class EnrichAgendaItemsPhase(
                 when (response) {
                     is LlmResponse.AgendaItemsEnriched -> {
                         for (item in response.items) {
-                            when (item.action) {
-                                "summary" -> {
-                                    val extract = item.extract
-                                    if (extract != null) {
-                                        completedItems[item.title] = TriagedItem(item.title, extract)
-                                        pendingItems.removeIf { it.title == item.title }
-                                    }
+                            when (item) {
+                                is EnrichedItem.Summary -> {
+                                    completedItems[item.title] = TriagedItem(item.title, item.extract)
+                                    pendingItems.removeIf { it.title == item.title }
                                 }
-                                "fetch" -> {
+                                is EnrichedItem.Fetch -> {
                                     val newUrls = item.urls.filterNot { it in fetchedUrls }
                                     urlQueue.addAll(newUrls)
                                     logger.info(

@@ -2,6 +2,7 @@ package orchestrator
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 sealed interface LlmResponse {
@@ -91,13 +92,25 @@ data class TriagedItem(
 )
 
 @Serializable
-data class EnrichedItem(
-    val title: String,
-    val action: String,
-    val extract: String? = null,
-    val urls: List<String> = emptyList(),
-    val reason: String? = null,
-)
+@JsonClassDiscriminator("action")
+sealed interface EnrichedItem {
+    val title: String
+
+    @Serializable
+    @SerialName("summary")
+    data class Summary(
+        override val title: String,
+        val extract: String,
+    ) : EnrichedItem
+
+    @Serializable
+    @SerialName("fetch")
+    data class Fetch(
+        override val title: String,
+        val urls: List<String> = emptyList(),
+        val reason: String? = null,
+    ) : EnrichedItem
+}
 
 fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (this) {
     is LlmResponse.Fetch -> copy(urls = urls.map { resolve(it) })
@@ -110,7 +123,12 @@ fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (th
     is LlmResponse.AgendaTriaged -> this
     is LlmResponse.AgendaAnalyzed -> this
     is LlmResponse.AgendaItemsEnriched -> copy(
-        items = items.map { it.copy(urls = it.urls.map { url -> resolve(url) }) }
+        items = items.map { item ->
+            when (item) {
+                is EnrichedItem.Fetch -> item.copy(urls = item.urls.map { resolve(it) })
+                is EnrichedItem.Summary -> item
+            }
+        }
     )
     is LlmResponse.AgendaFound -> copy(agendaUrl = resolve(agendaUrl))
     is LlmResponse.AgendaItemsIdentified -> copy(fetchUrls = fetchUrls.map { resolve(it) })
