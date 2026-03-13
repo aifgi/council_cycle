@@ -204,6 +204,36 @@ class OrchestratorTest {
     }
 
     @Test
+    fun `identify items phase passes continuation context on second page fetch`() = runBlocking {
+        val scraper = webScraper(
+            mapOf(
+                "https://council.example.com/agenda/1" to "<html><body><a href=\"https://council.example.com/agenda/2\">@1 Page 2</a></body></html>",
+                "https://council.example.com/agenda/2" to "<html><body><p>Continued agenda content</p></body></html>",
+            ),
+        )
+        val capturedUserPrompts = mutableListOf<String>()
+        var callCount = 0
+        val llm = MockLlmClient { _, userPrompt ->
+            capturedUserPrompts.add(userPrompt)
+            callCount++
+            if (callCount == 1) {
+                """{"type":"agenda_items_identified","items":[{"title":"Cycle Lane","description":"First page item"}],"fetchUrls":["https://council.example.com/agenda/2"],"fetchReason":"Agenda truncated, need page 2"}"""
+            } else {
+                """{"type":"agenda_items_identified","items":[{"title":"LTN Scheme","description":"Second page item"}]}"""
+            }
+        }
+        val phase = IdentifyAgendaItemsPhase(scraper, llm, maxIterations = 3)
+
+        val result = phase.execute(
+            IdentifyAgendaItemsInput("https://council.example.com/agenda/1", "Transport Committee", "2025-01-15"),
+        )
+
+        assertEquals(2, result?.size)
+        assertTrue(capturedUserPrompts[1].contains("The page below is the continuation you requested"))
+        assertTrue(capturedUserPrompts[1].contains("Agenda truncated, need page 2"))
+    }
+
+    @Test
     fun `identify items phase returns empty list when no relevant items`() = runBlocking {
         val scraper = webScraper(
             mapOf("https://council.example.com/agenda/1" to "<html><body><p>Budget discussion</p></body></html>"),

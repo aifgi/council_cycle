@@ -183,12 +183,13 @@ Always respond with:
 
 IMPORTANT: Only include fetchUrls if the agenda items list is clearly incomplete (i.e. truncated
 mid-list). Do NOT fetch further pages if you have reached the end of the agenda items section,
-even if the document continues with appendices, reports, or other supporting content.""".trimIndent()
+even if the document continues with appendices, reports, or other supporting content.
+Do NOT re-fetch pages you have already read. Only fetch URLs for pages not yet seen.""".trimIndent()
 
     val userParts = mutableListOf("This is the agenda of a meeting of $committeeName on $meetingDate.")
 
     if (fetchReason != null) {
-        userParts.add("You previously requested this page because: $fetchReason")
+        userParts.add("The page below is the continuation you requested. You requested it because: $fetchReason")
     }
 
     userParts.add(pageContent)
