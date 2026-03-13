@@ -19,7 +19,7 @@ data class IdentifyAgendaItemsInput(
 class IdentifyAgendaItemsPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val lightModel: String = DEFAULT_LIGHT_MODEL,
+    private val lightModel: String = DEFAULT_HEAVY_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
 ) : BasePhase(webScraper, llmClient), Phase<IdentifyAgendaItemsInput, List<IdentifiedAgendaItem>> {
 

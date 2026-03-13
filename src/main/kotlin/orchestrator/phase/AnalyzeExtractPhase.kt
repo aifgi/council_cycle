@@ -19,7 +19,7 @@ data class AnalyzeExtractInput(
 class AnalyzeExtractPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val heavyModel: String = DEFAULT_HEAVY_MODEL,
+    private val heavyModel: String = DEFAULT_LIGHT_MODEL,
 ) : BasePhase(webScraper, llmClient), Phase<AnalyzeExtractInput, List<Scheme>> {
 
     override val name = "Phase 6: Analyze extract"
