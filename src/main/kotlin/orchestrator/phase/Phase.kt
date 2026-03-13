@@ -6,6 +6,7 @@ import orchestrator.LlmResponse
 import orchestrator.SplitPrompt
 import orchestrator.resolveUrls
 import org.slf4j.LoggerFactory
+import scraper.ConversionResult
 import scraper.WebScraper
 
 const val DEFAULT_LIGHT_MODEL = "claude-haiku-4-5-20251001"
@@ -18,12 +19,30 @@ interface Phase<in I, out O> {
     suspend fun execute(input: I): O?
 }
 
-abstract class BasePhase(
-    protected val webScraper: WebScraper,
+abstract class BasePhase<I, O>(
+    private val webScraper: WebScraper,
     protected val llmClient: LlmClient,
-) {
+) : Phase<I, O> {
     protected val logger = LoggerFactory.getLogger(this::class.java)
     protected val json = Json { ignoreUnknownKeys = true }
+
+    private val trackedUrls = mutableSetOf<String>()
+
+    protected suspend fun fetchAndExtract(url: String): ConversionResult? {
+        trackedUrls.add(url)
+        return webScraper.fetchAndExtract(url)
+    }
+
+    final override suspend fun execute(input: I): O? {
+        try {
+            return doExecute(input)
+        } finally {
+            trackedUrls.forEach { webScraper.releaseDocument(it) }
+            trackedUrls.clear()
+        }
+    }
+
+    protected abstract suspend fun doExecute(input: I): O?
 
     protected fun parseResponse(raw: String): LlmResponse? {
         val jsonString = raw
@@ -53,7 +72,7 @@ abstract class BasePhase(
             val url = urlQueue.removeFirstOrNull() ?: break
             logger.info("{} — iteration {}: fetching {}", phaseName, iteration, url)
 
-            val conversionResult = webScraper.fetchAndExtract(url)
+            val conversionResult = fetchAndExtract(url)
             if (conversionResult == null) {
                 logger.warn("{} — fetch failed for {}", phaseName, url)
                 continue

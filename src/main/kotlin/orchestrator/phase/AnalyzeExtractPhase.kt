@@ -17,11 +17,11 @@ class AnalyzeExtractPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
     private val heavyModel: String = DEFAULT_LIGHT_MODEL,
-) : BasePhase(webScraper, llmClient), Phase<AnalyzeExtractInput, List<Scheme>> {
+) : BasePhase<AnalyzeExtractInput, List<Scheme>>(webScraper, llmClient) {
 
     override val name = "Phase 6: Analyze extract"
 
-    override suspend fun execute(input: AnalyzeExtractInput): List<Scheme>? {
+    override suspend fun doExecute(input: AnalyzeExtractInput): List<Scheme>? {
         logger.info("{} for meeting '{}' on {}", name, input.meeting.title, input.meeting.date)
         val prompt = buildAnalyzeExtractPrompt(input.extract)
         val rawResponse = llmClient.generate(prompt.system, prompt.user, heavyModel)

@@ -12,11 +12,11 @@ class FindAgendaPhase(
     llmClient: LlmClient,
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<FindAgendaInput, String> {
+) : BasePhase<FindAgendaInput, String>(webScraper, llmClient) {
 
     override val name = "Phase 3: Find agenda"
 
-    override suspend fun execute(input: FindAgendaInput): String? {
+    override suspend fun doExecute(input: FindAgendaInput): String? {
         return navigationLoop(
             startUrl = input.meetingUrl,
             phaseName = name,

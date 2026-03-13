@@ -16,13 +16,13 @@ data class IdentifyAgendaItemsInput(
 class IdentifyAgendaItemsPhase(
     webScraper: WebScraper,
     llmClient: LlmClient,
-    private val lightModel: String = DEFAULT_HEAVY_MODEL,
+    private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<IdentifyAgendaItemsInput, List<IdentifiedAgendaItem>> {
+) : BasePhase<IdentifyAgendaItemsInput, List<IdentifiedAgendaItem>>(webScraper, llmClient) {
 
     override val name = "Phase 4: Identify agenda items"
 
-    override suspend fun execute(input: IdentifyAgendaItemsInput): List<IdentifiedAgendaItem>? {
+    override suspend fun doExecute(input: IdentifyAgendaItemsInput): List<IdentifiedAgendaItem>? {
         val urlQueue = mutableListOf(input.agendaUrl)
         val accumulatedItems = mutableMapOf<String, IdentifiedAgendaItem>()
         var fetchReason: String? = null
@@ -31,7 +31,7 @@ class IdentifyAgendaItemsPhase(
             val url = urlQueue.removeFirstOrNull() ?: break
             logger.info("{} — iteration {}: fetching {}", name, iteration, url)
 
-            val conversionResult = webScraper.fetchAndExtract(url)
+            val conversionResult = fetchAndExtract(url)
             if (conversionResult == null) {
                 logger.warn("{} — fetch failed for {}", name, url)
                 continue

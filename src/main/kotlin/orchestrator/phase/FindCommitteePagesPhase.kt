@@ -15,11 +15,11 @@ class FindCommitteePagesPhase(
     llmClient: LlmClient,
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<FindCommitteePagesInput, Map<String, String>> {
+) : BasePhase<FindCommitteePagesInput, Map<String, String>>(webScraper, llmClient) {
 
     override val name = "Phase 1: Find committee pages"
 
-    override suspend fun execute(input: FindCommitteePagesInput): Map<String, String>? {
+    override suspend fun doExecute(input: FindCommitteePagesInput): Map<String, String>? {
         return navigationLoop(
             startUrl = input.startUrl,
             phaseName = name,

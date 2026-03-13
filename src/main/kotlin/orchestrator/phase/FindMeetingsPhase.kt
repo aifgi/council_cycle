@@ -18,11 +18,11 @@ class FindMeetingsPhase(
     llmClient: LlmClient,
     private val lightModel: String = DEFAULT_LIGHT_MODEL,
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS,
-) : BasePhase(webScraper, llmClient), Phase<FindMeetingsInput, List<Meeting>> {
+) : BasePhase<FindMeetingsInput, List<Meeting>>(webScraper, llmClient) {
 
     override val name = "Phase 2: Find meetings"
 
-    override suspend fun execute(input: FindMeetingsInput): List<Meeting>? {
+    override suspend fun doExecute(input: FindMeetingsInput): List<Meeting>? {
         return navigationLoop(
             startUrl = input.committeeUrl,
             phaseName = name,
