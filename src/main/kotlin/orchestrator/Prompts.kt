@@ -14,6 +14,7 @@ val TOPICS = listOf(
 
 val EXCLUDED_TOPICS = listOf(
     "highway maintenance",
+    "work programme",
 )
 
 fun buildPhase1Prompt(
