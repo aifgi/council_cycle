@@ -5,9 +5,9 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.slf4j.LoggerFactory
 
-private val logger = LoggerFactory.getLogger(ContentExtractor::class.java)
+private val logger = LoggerFactory.getLogger(HtmlExtractor::class.java)
 
-class ContentExtractor(
+class HtmlExtractor(
     private val mainContentSelectors: List<String> = DEFAULT_MAIN_CONTENT_SELECTORS,
     private val markdownConverter: AnnotatedMarkdownConverter = AnnotatedMarkdownConverter(),
 ) {

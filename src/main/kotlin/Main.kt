@@ -22,7 +22,8 @@ import processor.impl.LoggingResultProcessor
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
-import scraper.ContentExtractor
+import scraper.HtmlExtractor
+import scraper.PdfExtractor
 import scraper.WebScraper
 import java.io.File
 import java.nio.file.Paths
@@ -50,8 +51,9 @@ fun main(args: Array<String>) {
 
     val scraperModule = module {
         single { HttpClient(CIO) }
-        single { ContentExtractor() }
-        single { WebScraper(get(), get()) }
+        single { HtmlExtractor() }
+        single { PdfExtractor() }
+        single { WebScraper(get(), get(), get()) }
     }
 
     val llmModule = module {

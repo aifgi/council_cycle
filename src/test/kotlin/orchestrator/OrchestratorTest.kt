@@ -22,7 +22,8 @@ import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsInput
 import orchestrator.phase.IdentifyAgendaItemsPhase
 import processor.ResultProcessor
-import scraper.ContentExtractor
+import scraper.HtmlExtractor
+import scraper.PdfExtractor
 import scraper.WebScraper
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,7 +41,7 @@ class OrchestratorTest {
                 respond("Not Found", HttpStatusCode.NotFound)
             }
         }
-        return WebScraper(HttpClient(engine), ContentExtractor())
+        return WebScraper(HttpClient(engine), HtmlExtractor(), PdfExtractor())
     }
 
     private fun makeOrchestrator(scraper: WebScraper, llm: MockLlmClient, processor: ResultProcessor) =

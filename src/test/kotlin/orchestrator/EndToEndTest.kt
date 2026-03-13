@@ -19,7 +19,8 @@ import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsPhase
 import org.junit.jupiter.api.Tag
 import processor.ResultProcessor
-import scraper.ContentExtractor
+import scraper.HtmlExtractor
+import scraper.PdfExtractor
 import scraper.WebScraper
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -58,7 +59,7 @@ class EndToEndTest {
                 respond("Not Found", HttpStatusCode.NotFound)
             }
         }
-        return WebScraper(HttpClient(engine), ContentExtractor())
+        return WebScraper(HttpClient(engine), HtmlExtractor(), PdfExtractor())
     }
 
     private val councilConfig = CouncilConfig(

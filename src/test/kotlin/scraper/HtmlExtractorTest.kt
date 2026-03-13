@@ -7,9 +7,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ContentExtractorTest {
+class HtmlExtractorTest {
 
-    private val extractor = ContentExtractor()
+    private val extractor = HtmlExtractor()
 
     companion object {
         private const val BASE_URL = "https://example.com/page"
@@ -155,7 +155,7 @@ class ContentExtractorTest {
     @Test
     fun `uses custom selectors`() {
         val html = """<html><body><div>Other</div><section class="custom"><p>Custom</p></section></body></html>"""
-        val customExtractor = ContentExtractor(mainContentSelectors = listOf(".custom"))
+        val customExtractor = HtmlExtractor(mainContentSelectors = listOf(".custom"))
         val result = customExtractor.extract(html, BASE_URL).text
         assertContains(result, "Custom")
         assertFalse(result.contains("Other"))
