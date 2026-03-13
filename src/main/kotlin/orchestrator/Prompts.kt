@@ -20,8 +20,7 @@ fun buildPhase1Prompt(
     committeeNames: List<String>,
     pageContent: String,
 ): SplitPrompt {
-    val system = """
-You are helping find the URLs of council committees' dedicated pages on their website.
+    val system = """You are helping find the URLs of council committees' dedicated pages on their website.
 
 Below are the committee names and the contents of a web page from this council's website. Your job is to either:
 1. Identify the URLs of the listed committees' dedicated pages, OR
@@ -35,10 +34,10 @@ If you need to follow links to find the committee pages, respond with:
 {
   "type": "fetch",
   "urls": ["@1"],
-  "reason": "Brief explanation of why you want to fetch these URLs"
+  "reason": "Brief explanation of why these links are likely to lead to the committee pages"
 }
 
-Only include URLs that appeared as links in the page content above. Choose the most relevant 1-5 links.
+Only include URLs that appeared as links in the page content above. Choose the most relevant 1–5 links.
 
 If you found the committees' page URLs, respond with:
 {
@@ -46,8 +45,7 @@ If you found the committees' page URLs, respond with:
   "committees": [
     {"name": "Committee Name", "url": "@1"}
   ]
-}
-""".trimIndent()
+}""".trimIndent()
 
     val committeeList = committeeNames.joinToString("\n") { "- $it" }
     val user = "Committees:\n$committeeList\n\n$pageContent"
@@ -85,7 +83,7 @@ OUTPUT RULES
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs.
 
-Respond with ONLY a single JSON object. Do not include any reasoning or other text. The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 If you need to follow links to find the relevant meeting pages, respond with:
 {
@@ -94,7 +92,7 @@ If you need to follow links to find the relevant meeting pages, respond with:
   "reason": "Brief explanation of why these links are likely to lead to meeting listings or meeting pages"
 }
 
-Only include URLs that appeared as links in the page content above. Choose the most relevant 1-5 links.
+Only include URLs that appeared as links in the page content above. Choose the most relevant 1–5 links.
 
 If you found meeting pages within the date range, respond with:
 {
@@ -108,8 +106,8 @@ If you found meeting pages within the date range, respond with:
   ]
 }
 
-Return agendaUrl as the link to the meeting page itself (not any documents linked from it).
-""".trimIndent()
+Return meetingUrl as the link to the meeting page itself (not any documents linked from it).
+If no meetings fall within the date range, respond with meetings_found and an empty array.""".trimIndent()
 
     val user = "Committee: $committeeName\nDate range: $dateFrom to $dateTo\n\n$pageContent"
     return SplitPrompt(system, user)
@@ -120,6 +118,8 @@ fun buildFindAgendaPrompt(meetingUrl: String, pageContent: String): SplitPrompt 
 
 The page shown is a council meeting page. Your job is to find a link to the agenda document for this meeting.
 
+OUTPUT RULES
+
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
@@ -128,10 +128,10 @@ If you need to follow links to find the agenda document, respond with:
 {
   "type": "fetch",
   "urls": ["@1"],
-  "reason": "Brief explanation of why you want to fetch these URLs"
+  "reason": "Brief explanation of why these links are likely to contain the agenda document"
 }
 
-Only include URLs that appeared as links in the page content. Choose the most relevant 1-5 links.
+Only include URLs that appeared as links in the page content. Choose the most relevant 1–5 links.
 
 If you found a link to the agenda document, respond with:
 {
@@ -164,7 +164,7 @@ For each relevant item, provide its title and a brief description of what it is 
 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
-Respond with ONLY a single JSON object. Do not include any reasoning or other text. The JSON must have a "type" field.
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
 
 Always respond with:
 {
@@ -228,8 +228,8 @@ URLs are represented as short references such as @1, @2.
 Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object.
-Do NOT include reasoning, explanations, or any text outside the JSON.
-Do NOT add fields other than those explicitly shown below.
+Do not include any reasoning, explanation, or any text outside the JSON.
+Do not add fields other than those explicitly shown below.
 
 FETCH RESPONSE FORMAT
 
@@ -299,20 +299,20 @@ fun buildAnalyzeExtractPrompt(
     val topicsList = TOPICS.joinToString(", ")
     val excludedList = EXCLUDED_TOPICS.joinToString(", ")
 
-    val system = """
-You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
+    val system = """You are analyzing pre-extracted content from a council committee meeting agenda for transport and planning schemes.
 
 Topics of interest: $topicsList
 Excluded topics (do not include): $excludedList
 
-Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Identify any schemes or items in the provided content that relate to the topics listed.
 
-Analyze the content above and identify any schemes or items related to the topics listed.
-
-If the content includes any decision, resolution, approval, refusal, deferral, endorsement, recommendation, it MUST be explicitly included in the summary.
+If the content includes any decision, resolution, approval, refusal, deferral, endorsement, or recommendation, it MUST be explicitly included in the summary.
 When NO decision is recorded:
 - Explicitly state this using a sentence such as "No decision."
 
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+
+Respond with:
 {
   "type": "agenda_analyzed",
   "schemes": [
@@ -324,8 +324,7 @@ When NO decision is recorded:
   ]
 }
 
-If no relevant items are found, return an empty schemes array: {"type": "agenda_analyzed", "schemes": []}
-""".trimIndent()
+If no relevant items are found, return an empty schemes array: {"type": "agenda_analyzed", "schemes": []}""".trimIndent()
 
     return SplitPrompt(system, extract)
 }
