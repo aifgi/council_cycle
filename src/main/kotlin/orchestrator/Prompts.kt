@@ -204,13 +204,14 @@ Do NOT re-fetch pages you have already read. Only fetch URLs for pages not yet s
 fun buildEnrichAgendaItemsPrompt(
     committeeName: String,
     meetingDate: String,
-    pendingItems: List<IdentifiedAgendaItem>,
+    items: List<IdentifiedAgendaItem>,
     pageContent: String,
+    fetchedFor: List<IdentifiedAgendaItem>? = null,
 ): SplitPrompt {
     val system = """You are enriching pre-identified agenda items from a council committee meeting.
 
 The items listed below each need a detailed extract built from documents linked on the meeting page.
-For EACH item you must either provide a SUMMARY or request a FETCH.
+For EACH item you may provide a SUMMARY, request a FETCH, or both.
 
 SCOPE RULES
 
@@ -252,15 +253,25 @@ Do not include any reasoning, explanation, or any text outside the JSON.
 }
 
 Rules:
-- Every item in the input list MUST appear in the output exactly once
-- Use "summary" with a best-effort extract if no relevant linked document exists for the item
+- Each item in the input list must appear at least once. An item may appear twice: once with action "summary" and once with action "fetch".
+- Use "summary" when sufficient information is available from the current page
+- Use "fetch" when a specific linked document would provide more detail for that item
 - For "fetch": only include URLs that appeared as links in the page content; choose 1–3 most relevant links
-- NEVER fetch agenda packs or combined document packs""".trimIndent()
+- NEVER fetch agenda packs or combined document packs
+- If an item has no linked document and insufficient information, provide a best-effort "summary"""".trimIndent()
 
-    val itemsList = pendingItems.joinToString("\n") { "- ${it.title}: ${it.description}" }
-    val user = "Meeting of $committeeName on $meetingDate.\n\nItems to enrich:\n$itemsList\n\n---\n\n$pageContent"
+    val itemsList = items.joinToString("\n") { "- ${it.title}: ${it.description}" }
+    val userParts = mutableListOf("Meeting of $committeeName on $meetingDate.")
 
-    return SplitPrompt(system, user)
+    if (fetchedFor != null) {
+        val fetchedForList = fetchedFor.joinToString("\n") { "- ${it.title}: ${it.description}" }
+        userParts.add("This document was fetched for the following agenda item(s):\n$fetchedForList")
+    }
+
+    userParts.add("Items to enrich:\n$itemsList")
+    userParts.add(pageContent)
+
+    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
 fun buildAnalyzeExtractPrompt(

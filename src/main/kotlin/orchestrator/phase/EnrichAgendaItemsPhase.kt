@@ -26,16 +26,16 @@ class EnrichAgendaItemsPhase(
     override val name = "Phase 5: Enrich agenda items"
 
     override suspend fun execute(input: EnrichAgendaItemsInput): LlmResponse.AgendaTriaged? {
-        val urlQueue = mutableListOf(input.meetingUrl)
-        val fetchedUrls = mutableSetOf<String>()
-        val completedItems = mutableMapOf<String, TriagedItem>()
-        val pendingItems = input.identifiedItems.toMutableList()
+        // Each entry: (url, targetItems) — targetItems is null for the initial meeting URL
+        val urlQueue = mutableListOf<Pair<String, List<IdentifiedAgendaItem>?>>(
+            Pair(input.meetingUrl, null),
+        )
+        val processedOrQueuedUrls = mutableSetOf(input.meetingUrl)
+        val summariesByItem = mutableMapOf<String, MutableList<String>>()
 
         try {
             for (iteration in 1..maxIterations) {
-                if (pendingItems.isEmpty()) break
-                val url = urlQueue.removeFirstOrNull() ?: break
-                fetchedUrls.add(url)
+                val (url, fetchedFor) = urlQueue.removeFirstOrNull() ?: break
                 logger.info("{} — iteration {}: fetching {}", name, iteration, url)
 
                 val conversionResult = webScraper.fetchAndExtract(url)
@@ -44,11 +44,13 @@ class EnrichAgendaItemsPhase(
                     continue
                 }
 
+                val targetItems = fetchedFor ?: input.identifiedItems
                 val prompt = buildEnrichAgendaItemsPrompt(
                     input.committeeName,
                     input.meetingDate,
-                    pendingItems,
+                    targetItems,
                     conversionResult.text,
+                    fetchedFor,
                 )
                 logger.trace("LLM Prompt {}", prompt.user)
                 val rawResponse = llmClient.generate(prompt.system, prompt.user, lightModel)
@@ -58,21 +60,30 @@ class EnrichAgendaItemsPhase(
 
                 when (response) {
                     is LlmResponse.AgendaItemsEnriched -> {
+                        val newFetchesByUrl = mutableMapOf<String, MutableList<IdentifiedAgendaItem>>()
                         for (item in response.items) {
                             when (item) {
                                 is EnrichedItem.Summary -> {
-                                    completedItems[item.title] = TriagedItem(item.title, item.extract)
-                                    pendingItems.removeIf { it.title == item.title }
+                                    summariesByItem.getOrPut(item.title) { mutableListOf() }.add(item.extract)
                                 }
                                 is EnrichedItem.Fetch -> {
-                                    val newUrls = item.urls.filterNot { it in fetchedUrls }
-                                    urlQueue.addAll(newUrls)
-                                    logger.info(
-                                        "{} — item '{}' requests {} URL(s): {}",
-                                        name, item.title, newUrls.size, item.reason,
-                                    )
+                                    val requestingItem = targetItems.find { it.title == item.title }
+                                    val itemsForUrls = if (requestingItem != null) listOf(requestingItem) else targetItems
+                                    for (newUrl in item.urls.filterNot { it in processedOrQueuedUrls }) {
+                                        newFetchesByUrl.getOrPut(newUrl) { mutableListOf() }.addAll(itemsForUrls)
+                                    }
+                                    if (item.urls.isNotEmpty()) {
+                                        logger.info(
+                                            "{} — item '{}' requests {} URL(s): {}",
+                                            name, item.title, item.urls.size, item.reason,
+                                        )
+                                    }
                                 }
                             }
+                        }
+                        for ((newUrl, items) in newFetchesByUrl) {
+                            processedOrQueuedUrls.add(newUrl)
+                            urlQueue.add(Pair(newUrl, items.distinctBy { it.title }))
                         }
                     }
                     else -> {
@@ -82,21 +93,27 @@ class EnrichAgendaItemsPhase(
                 }
             }
 
-            if (completedItems.isEmpty()) {
+            if (summariesByItem.isEmpty()) {
                 logger.warn("{} — no items summarized", name)
                 return null
             }
 
-            if (pendingItems.isNotEmpty()) {
+            val completedItems = summariesByItem.map { (title, summaries) ->
+                TriagedItem(title, summaries.joinToString("\n\n---\n\n"))
+            }
+
+            val summarizedTitles = summariesByItem.keys
+            val unsummarized = input.identifiedItems.filter { it.title !in summarizedTitles }
+            if (unsummarized.isNotEmpty()) {
                 logger.warn(
                     "{} — returning {} item(s); {} item(s) not summarized: {}",
-                    name, completedItems.size, pendingItems.size, pendingItems.map { it.title },
+                    name, completedItems.size, unsummarized.size, unsummarized.map { it.title },
                 )
             }
 
-            return LlmResponse.AgendaTriaged(relevant = true, items = completedItems.values)
+            return LlmResponse.AgendaTriaged(relevant = true, items = completedItems)
         } finally {
-            fetchedUrls.forEach { webScraper.releaseDocument(it) }
+            processedOrQueuedUrls.forEach { webScraper.releaseDocument(it) }
         }
     }
 }

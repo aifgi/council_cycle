@@ -316,7 +316,7 @@ class OrchestratorTest {
     }
 
     @Test
-    fun `enrich phase omits completed items from subsequent prompt`() = runBlocking {
+    fun `enrich phase sends only requesting item context for fetched document`() = runBlocking {
         val identifiedItems = listOf(
             IdentifiedAgendaItem("Cycle Lane", "New cycle lane"),
             IdentifiedAgendaItem("LTN Scheme", "Low traffic neighbourhood"),
@@ -350,8 +350,44 @@ class OrchestratorTest {
         )
 
         assertEquals(2, result?.items?.size)
+        // Second prompt targets only the item that requested the URL, with fetch context
         assertTrue(secondUserPrompt!!.contains("LTN Scheme"))
         assertTrue(!secondUserPrompt!!.contains("Cycle Lane"))
+        assertTrue(secondUserPrompt!!.contains("This document was fetched for the following agenda item(s)"))
+    }
+
+    @Test
+    fun `enrich phase accumulates summaries from multiple pages for the same item`() = runBlocking {
+        val scraper = webScraper(
+            mapOf(
+                "https://council.example.com/agenda/1" to "<html><body><a href=\"https://council.example.com/report/1\">Report</a></body></html>",
+                "https://council.example.com/report/1" to "<html><body><p>Report details</p></body></html>",
+            ),
+        )
+        var callCount = 0
+        val llm = MockLlmClient { _, _ ->
+            callCount++
+            if (callCount == 1) {
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"Meeting page extract"},{"title":"Cycle Lane","action":"fetch","urls":["https://council.example.com/report/1"],"reason":"Need full report"}]}"""
+            } else {
+                """{"type":"agenda_items_enriched","items":[{"title":"Cycle Lane","action":"summary","extract":"Report extract"}]}"""
+            }
+        }
+        val phase = EnrichAgendaItemsPhase(scraper, llm, maxIterations = 3)
+
+        val result = phase.execute(
+            EnrichAgendaItemsInput(
+                "https://council.example.com/agenda/1",
+                sampleIdentifiedItems,
+                "Transport Committee",
+                "2025-01-15",
+            )
+        )
+
+        assertEquals(1, result?.items?.size)
+        val extract = result?.items?.first()?.extract!!
+        assertTrue(extract.contains("Meeting page extract"))
+        assertTrue(extract.contains("Report extract"))
     }
 
     @Test
