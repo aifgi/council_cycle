@@ -1,0 +1,32 @@
+{
+  "version": "0.1.0",
+  "profile_name": "mixed_mode",
+  "test_runner_configurations": {
+    "council-cycle-scraper.cs.md": {
+      "run_all_tests_command": {
+        "command_line": "./gradlew test --rerun; _EC=$?; python3 -c \"import xml.etree.ElementTree as ET, glob; root=ET.Element('testsuites'); [root.append(ET.parse(f).getroot()) for f in glob.glob('build/test-results/test/TEST-*.xml')]; ET.ElementTree(root).write('{tests_report_file}', xml_declaration=True, encoding='unicode')\"; exit $_EC"
+      },
+      "run_specified_tests_command": {
+        "command_line": "TESTS_ARGS=$(echo {tests_list} | tr ' ' '\\n' | sed 's/^/--tests /'); ./gradlew test $TESTS_ARGS --rerun; _EC=$?; python3 -c \"import xml.etree.ElementTree as ET, glob; root=ET.Element('testsuites'); [root.append(ET.parse(f).getroot()) for f in glob.glob('build/test-results/test/TEST-*.xml')]; ET.ElementTree(root).write('{tests_report_file}', xml_declaration=True, encoding='unicode')\"; exit $_EC"
+      },
+      "run_all_tests_with_coverage_command": {
+        "command_line": "./gradlew test jacocoTestReport --rerun; _EC=$?; python3 -c \"import xml.etree.ElementTree as ET, glob; root=ET.Element('testsuites'); [root.append(ET.parse(f).getroot()) for f in glob.glob('build/test-results/test/TEST-*.xml')]; ET.ElementTree(root).write('{tests_report_file}', xml_declaration=True, encoding='unicode')\" && python3 scripts/jacoco_to_lcov.py build/reports/jacoco/test/jacocoTestReport.xml {tests_coverage_report_file}; exit $_EC"
+      },
+      "run_specified_tests_with_coverage_command": {
+        "command_line": "TESTS_ARGS=$(echo {tests_list} | tr ' ' '\\n' | sed 's/^/--tests /'); ./gradlew test $TESTS_ARGS jacocoTestReport --rerun; _EC=$?; python3 -c \"import xml.etree.ElementTree as ET, glob; root=ET.Element('testsuites'); [root.append(ET.parse(f).getroot()) for f in glob.glob('build/test-results/test/TEST-*.xml')]; ET.ElementTree(root).write('{tests_report_file}', xml_declaration=True, encoding='unicode')\" && python3 scripts/jacoco_to_lcov.py build/reports/jacoco/test/jacocoTestReport.xml {tests_coverage_report_file}; exit $_EC"
+      },
+      "non_test_source_regex_include": [
+        "\\.kt$",
+        "\\.kts$"
+      ],
+      "non_test_source_regex_exclude": [
+        "(^|/)src/test/",
+        "Test\\.kt$",
+        "Tests\\.kt$"
+      ],
+      "source_glob_patterns": [
+        "src/main/**/*.kt"
+      ]
+    }
+  }
+}
