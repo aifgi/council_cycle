@@ -32,3 +32,5 @@ build/
 
 # IDE
 .idea/
+# CodeSpeak
+.codespeak/ignored/
