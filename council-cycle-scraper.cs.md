@@ -95,8 +95,8 @@ Algorithm:
 7. Returns `null` when iterations are exhausted (logs warning).
 
 **Model constants:**
-- `DEFAULT_LIGHT_MODEL = "claude-haiku-4-5-20251001"` — phases 1–5
-- `DEFAULT_HEAVY_MODEL = "claude-sonnet-4-5-20250929"` — phase 6
+- `DEFAULT_LIGHT_MODEL = "claude-sonnet-4-6"` — phases 1–5
+- `DEFAULT_HEAVY_MODEL = "claude-opus-4-6"` — phase 6
 - `DEFAULT_MAX_ITERATIONS = 5`
 - `DEFAULT_TRIAGE_MAX_ITERATIONS = 5`
 
@@ -322,7 +322,7 @@ Title: ...
 Topic: ...
 Meeting date: ...
 Agenda URL: ...
-Summary: <word-wrapped at 80 chars, continuation lines indented 2 spaces>
+Summary: <word-wrapped at 80 chars, contiknuation lines indented 2 spaces>
 ```
 
 ### `CompositeResultProcessor(delegates: List<ResultProcessor>)`
