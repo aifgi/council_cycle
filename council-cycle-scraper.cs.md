@@ -154,8 +154,6 @@ Input: `AnalyzeExtractInput(extract, committeeName, meeting)`. Output: `List<Sch
 
 Single LLM call (no navigation loop) with `buildAnalyzeExtractPrompt`. The `extract` passed in is all `TriagedItem` objects joined as markdown sections (`## {title}\n{extract}`). Maps `LlmResponse.AgendaAnalyzed.schemes`, setting `meetingDate`, `committeeName`, and `agendaUrl` from the input (not from the LLM).
 
-*Note: The `heavyModel` field defaults to `DEFAULT_LIGHT_MODEL` due to a bug; the heavy model constant is defined but not used here.*
-
 ---
 
 ## LLM Response Types (`orchestrator/LlmResponse.kt`)
