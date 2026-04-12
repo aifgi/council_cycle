@@ -33,6 +33,7 @@ Below are the committee names and the contents of a web page from this council's
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
 
 If you need to follow links to find the committee pages, respond with:
 {
@@ -88,6 +89,7 @@ OUTPUT RULES
 URLs are represented as short references like @1, @2. Use these references when specifying URLs.
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
 
 If you need to follow links to find the relevant meeting pages, respond with:
 {
@@ -127,6 +129,7 @@ OUTPUT RULES
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
 
 If you need to follow links to find the agenda document, respond with:
 {
@@ -169,6 +172,7 @@ For each relevant item, provide its title and a brief description of what it is 
 URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
 
 Always respond with:
 {
@@ -234,6 +238,7 @@ Use these references when specifying URLs in your response.
 
 Respond with ONLY a single JSON object.
 Do not include any reasoning, explanation, or any text outside the JSON.
+Always escape double quotes within string values as \".
 
 {
   "type": "agenda_items_enriched",
@@ -292,6 +297,7 @@ When NO decision is recorded:
 - Explicitly state this using a sentence such as "No decision."
 
 Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
 
 Respond with:
 {

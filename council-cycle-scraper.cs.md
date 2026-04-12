@@ -191,6 +191,7 @@ All variants are a `sealed interface LlmResponse` with a JSON `"type"` discrimin
 `SplitPrompt(system: String, user: String)` — the system part carries static instructions (sent with `CacheControlEphemeral` for prompt caching); the user part carries dynamic page content.
 
 All prompt builders instruct the LLM to respond with **only** a single JSON object with a `"type"` field. URL references in page content are short tokens (e.g. `@1`, `@2`) substituted by `UrlRegistry`; prompts instruct the LLM to use these tokens when returning URLs.
+All prompt builders instruct the LLM to always escape double quotes within string values as \".
 
 | Builder | Phases | Key instructions |
 |---|---|---|
