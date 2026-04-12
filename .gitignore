@@ -34,3 +34,5 @@ build/
 .idea/
 # CodeSpeak
 .codespeak/ignored/
+specs/.current-spec
+**/.progress.md
