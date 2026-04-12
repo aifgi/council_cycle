@@ -64,11 +64,11 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 
 ---
 
-### US-3: Filter decisions by configured decision makers
+### US-3: Filter decisions by configured decision makers and topics of interest
 
 **As a** council researcher
-**I want to** only decisions taken by the configured `decisionMakers` to be processed
-**So that** unrelated decisions (other officers, cabinet members) do not appear in the output
+**I want to** only decisions taken by the configured `decisionMakers` AND relating to the app's topics of interest to be processed
+**So that** unrelated decisions (wrong officer, or irrelevant subject matter) do not waste tokens or appear in the output
 
 **Acceptance Criteria:**
 - [ ] AC-3.1: The LLM compares each decision's title/context on the listing page against the `decisionMakers` list and includes only matches.
@@ -76,6 +76,8 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 - [ ] AC-3.3: If the decision maker is not visible in the listing table row (ModernGov `DS=2` view), the LLM may defer the decision maker check to D3 (detail page), where the "Decision Maker" field is always present.
 - [ ] AC-3.4: A decision is excluded if, after checking the detail page in D3, its decision maker does not match any entry in `decisionMakers`.
 - [ ] AC-3.5: If zero decisions match after scanning the full date range, the app logs an informational message for the council and produces no output (no crash).
+- [ ] AC-3.6: The D2 LLM prompt includes the `TOPICS` (topics of interest) and `EXCLUDED_TOPICS` lists from `Prompts.kt`; the LLM excludes decisions whose title clearly falls outside the topics of interest or matches an excluded topic — same filtering logic as Phase 4 in the meetings pipeline.
+- [ ] AC-3.7: The D3 LLM prompt also includes the topics of interest so the LLM focuses enrichment on content relevant to those topics and can skip irrelevant linked documents.
 
 ---
 
@@ -137,7 +139,7 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 | FR-6 | `Orchestrator.processCouncil()` dispatches to decisions pipeline when `mode == "decisions"`, meetings pipeline otherwise | High | Both pipelines reachable; dispatch testable with unit test |
 | FR-7 | New `FindDecisionsPhase` (D2) takes the starting `decisionsUrl`, iterates listing pages, returns list of `(title, decisionDate, detailUrl, decisionMaker?)` for matching decisions | High | Returns only decisions matching `decisionMakers` within date range |
 | FR-8 | D2 uses its own iteration loop with configurable max-iterations (default 50, `DEFAULT_D2_MAX_ITERATIONS`) | High | Warning logged on cap hit; no crash |
-| FR-9 | D2 LLM prompt includes the `decisionMakers` list; LLM filters by case-insensitive substring match | High | Non-matching decisions excluded from returned list |
+| FR-9 | D2 LLM prompt includes the `decisionMakers` list AND the `TOPICS`/`EXCLUDED_TOPICS` from `Prompts.kt`; LLM filters by decision maker (case-insensitive substring) AND topic relevance | High | Decisions by wrong maker or clearly off-topic excluded from returned list |
 | FR-10 | New `EnrichDecisionPhase` (D3) fetches `ieDecisionDetails.aspx` and selectively follows linked documents, returning an enriched extract | High | Output structurally compatible with Phase 6 input |
 | FR-11 | D3 LLM skips linked documents identified as drawings, maps, plans, or images based on link title/filename | High | Non-textual attachments not fetched; tokens not wasted |
 | FR-12 | D3 max iterations defaults to 5; constant defined in phase class | Medium | Consistent with Phase 5 pattern |
@@ -147,6 +149,7 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 | FR-16 | New phase singletons registered in Koin `orchestratorModule` in `Main.kt` | High | App starts without DI errors when a decisions-mode council is present |
 | FR-17 | New prompts for D2 and D3 added to `Prompts.kt` using `SplitPrompt(system, user)` with `CacheControlEphemeral` on system part | Medium | Prompt caching active for repeated D2 iterations |
 | FR-18 | D2 and D3 use the Haiku light model constant from `Phase.kt` | Medium | Consistent with phases 1–5 model selection |
+| FR-19 | D3 LLM prompt includes the `TOPICS`/`EXCLUDED_TOPICS` lists so the LLM can focus enrichment on relevant content and skip off-topic linked documents | High | Consistent with meetings pipeline; topics context present in D3 system prompt |
 
 ---
 
@@ -155,7 +158,7 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 | ID | Requirement | Metric | Target |
 |----|-------------|--------|--------|
 | NFR-1 | No regression on existing meetings pipeline | All existing JUnit 5 tests pass | `./gradlew test` passes with zero failures after decisions pipeline added |
-| NFR-2 | D2 max iterations configurable | Config field present and respected | Default 50; overridable per council in YAML |
+| NFR-2 | D2 max iterations constant | `DEFAULT_D2_MAX_ITERATIONS = 50` defined in `Phase.kt` | Default 50; no per-council config override |
 | NFR-3 | D3 max iterations configurable | Constant in phase class | Default 5; same as Phase 5 |
 | NFR-4 | Scope: ModernGov only | Only `mgDelegatedDecisions.aspx` format targeted | Non-ModernGov decision registers not in scope |
 | NFR-5 | Both modes co-exist in same execution | No mutual exclusion enforced | Mixed-mode config file runs all councils without error |
@@ -176,7 +179,6 @@ Full config shape with a decisions-mode council alongside an existing meetings-m
     - Cabinet Member for Streets
   dateFrom: "2025-01-01"
   dateTo: "2025-12-31"
-  # d2MaxIterations: 50   # optional override; default 50
 
 # Meetings-mode council (existing — unchanged)
 - name: Barnet
@@ -200,7 +202,7 @@ Full config shape with a decisions-mode council alongside an existing meetings-m
 | `decisionMakers` | List\<String\> | `[]` | Ignored | Required (min 1) |
 | `dateFrom` | String? | null | Optional | Optional |
 | `dateTo` | String? | null | Optional | Optional |
-| `d2MaxIterations` | Int? | null (→ 50) | Ignored | Optional |
+| ~~`d2MaxIterations`~~ | — | — | — | Not in config; constant in code |
 
 ---
 
