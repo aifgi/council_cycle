@@ -12,8 +12,11 @@ data class AppConfig(
 @Serializable
 data class CouncilConfig(
     val name: String,
-    val siteUrl: String,
-    val committees: List<String>,
+    val meetingsUrl: String? = null,
+    val committees: List<String> = emptyList(),
+    val mode: String = "meetings",
+    val decisionsUrl: String? = null,
+    val decisionMakers: List<String> = emptyList(),
     val dateFrom: String? = null,
     val dateTo: String? = null,
 )

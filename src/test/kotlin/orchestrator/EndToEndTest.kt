@@ -64,7 +64,7 @@ class EndToEndTest {
 
     private val councilConfig = CouncilConfig(
         name = "Kingston",
-        siteUrl = "$base/mgCommitteeStructure.aspx",
+        meetingsUrl = "$base/mgCommitteeStructure.aspx",
         committees = listOf("Kingston and North Kingston Neighbourhood Committee"),
         dateFrom = "2025-11-01",
         dateTo = "2026-01-31",

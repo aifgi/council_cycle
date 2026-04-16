@@ -1,8 +1,18 @@
 outputDir: "output"
 #debugLlmDir: "debug-llm"
 councils:
+  # Decisions-mode council
+  - name: Westminster
+    mode: decisions
+    decisionsUrl: https://westminster.moderngov.co.uk/mgDelegatedDecisions.aspx?bcr=1&DM=0&DS=2&K=0&V=0
+    decisionMakers:
+      - Cabinet Member for Streets
+    dateFrom: "2025-01-01"
+    dateTo: "2025-12-31"
+
+  # Meetings-mode council
   - name: "Example Council"
-    siteUrl: "https://example.council.gov.uk"
+    meetingsUrl: "https://example.council.gov.uk"
     dateFrom: "2025-12-01"
     dateTo: "2026-01-31"
     committees:

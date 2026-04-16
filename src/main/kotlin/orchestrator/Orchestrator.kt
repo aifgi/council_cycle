@@ -35,7 +35,7 @@ class Orchestrator(
             ?: LocalDate.now().plusMonths(3).format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         val committeeUrls = findCommitteePagesPhase.execute(
-            FindCommitteePagesInput(council.siteUrl, council.committees)
+            FindCommitteePagesInput(council.meetingsUrl ?: "", council.committees)
         )
         if (committeeUrls == null) {
             logger.warn("Could not find committee pages for council '{}'", council.name)

@@ -586,7 +586,7 @@ class OrchestratorTest {
         makeOrchestrator(scraper, llm, processor).processCouncil(
             CouncilConfig(
                 name = "Test Council",
-                siteUrl = "https://council.example.com",
+                meetingsUrl = "https://council.example.com",
                 committees = listOf("Planning"),
                 dateFrom = "2026-01-01",
                 dateTo = "2026-06-30",
