@@ -206,6 +206,16 @@ Focus: Orchestrator-level tests for decisions pipeline dispatch and field mappin
 
 ---
 
+- [x] 2.1.fix1 [FIX 2.1] Fix: wire analyzeCallCount in test 7 of OrchestratorDecisionsTest
+
+  - **Do**: In `src/test/kotlin/orchestrator/OrchestratorDecisionsTest.kt`, in test 7 (`decisions pipeline logs info and skips when find phase returns empty list`): either remove the unused `analyzeCallCount` variable or wire it up — increment it in the LLM mock handler and add `assertEquals(0, analyzeCallCount, "analyze phase should not be called")` assertion
+  - **Files**: `src/test/kotlin/orchestrator/OrchestratorDecisionsTest.kt`
+  - **Done when**: No unused variables in test 7; test still passes
+  - **Verify**: `./gradlew test --tests "orchestrator.OrchestratorDecisionsTest" 2>&1 | tail -15`
+  - **Commit**: `fix(test): address review finding from task 2.1`
+
+---
+
 - [ ] 2.2 [VERIFY] Full regression check — all tests
 
   - **Do**: Run full test suite

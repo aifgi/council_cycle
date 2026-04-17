@@ -307,6 +307,11 @@ class OrchestratorDecisionsTest {
                 systemPrompt.contains("decision", ignoreCase = true) -> {
                     """{"type":"decisions_page_scanned","decisions":[]}"""
                 }
+                // analyze phase
+                systemPrompt.contains("analyz", ignoreCase = true) || systemPrompt.contains("scheme", ignoreCase = true) -> {
+                    analyzeCallCount++
+                    """{"type":"agenda_analyzed","schemes":[]}"""
+                }
                 // enrich phase
                 else -> {
                     enrichCallCount++
@@ -319,6 +324,7 @@ class OrchestratorDecisionsTest {
         makeOrchestrator(scraper, llm, processor).processCouncil(decisionsCouncil())
 
         assertEquals(0, enrichCallCount, "enrich phase should not be called when no decisions found")
+        assertEquals(0, analyzeCallCount, "analyze phase should not be called when no decisions found")
         assertEquals(0, processorCallCount, "processor should not be called when no decisions found")
     }
 }
