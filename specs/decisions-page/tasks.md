@@ -104,7 +104,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.6 Create `EnrichDecisionPhase` with tests
+- [x] 1.6 Create `EnrichDecisionPhase` with tests
 
   - **Do**:
     1. Create `EnrichDecisionPhase.kt`:
