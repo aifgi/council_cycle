@@ -77,7 +77,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.5 Create `FindDecisionsPhase` with tests
+- [x] 1.5 Create `FindDecisionsPhase` with tests
 
   - **Do**:
     1. Create `FindDecisionsPhase.kt`:
