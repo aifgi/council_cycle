@@ -185,7 +185,7 @@ Focus: Orchestrator-level tests for decisions pipeline dispatch and field mappin
 
 ---
 
-- [ ] 2.1 Write `OrchestratorDecisionsTest` — all 7 test cases
+- [x] 2.1 Write `OrchestratorDecisionsTest` — all 7 test cases
 
   - **Do**:
     Create `OrchestratorDecisionsTest.kt` with 7 tests (does NOT modify `OrchestratorTest`):
