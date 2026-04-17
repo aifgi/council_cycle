@@ -10,8 +10,10 @@ import llm.LlmClient
 import llm.LoggingLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.EnrichDecisionPhase
 import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindDecisionsPhase
 import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsPhase
 import orchestrator.Orchestrator
@@ -87,7 +89,9 @@ fun main(args: Array<String>) {
         single { IdentifyAgendaItemsPhase(get(), get()) }
         single { EnrichAgendaItemsPhase(get(), get()) }
         single { AnalyzeExtractPhase(get(), get()) }
-        single { Orchestrator(get(), get(), get(), get(), get(), get(), get()) }
+        single { FindDecisionsPhase(get(), get()) }
+        single { EnrichDecisionPhase(get(), get()) }
+        single { Orchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     }
 
     val koinApp = startKoin {

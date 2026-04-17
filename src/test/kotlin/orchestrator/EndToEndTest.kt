@@ -13,8 +13,10 @@ import llm.ClaudeLlmClient
 import llm.MockLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.EnrichDecisionPhase
 import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindDecisionsPhase
 import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsPhase
 import org.junit.jupiter.api.Tag
@@ -116,6 +118,8 @@ class EndToEndTest {
             IdentifyAgendaItemsPhase(scraper, llm, maxIterations = 5),
             EnrichAgendaItemsPhase(scraper, llm, maxIterations = 5),
             AnalyzeExtractPhase(scraper, llm),
+            FindDecisionsPhase(scraper, llm),
+            EnrichDecisionPhase(scraper, llm),
             processor,
         )
 
@@ -147,6 +151,8 @@ class EndToEndTest {
             IdentifyAgendaItemsPhase(scraper, llm, maxIterations = 5),
             EnrichAgendaItemsPhase(scraper, llm, maxIterations = 5),
             AnalyzeExtractPhase(scraper, llm),
+            FindDecisionsPhase(scraper, llm),
+            EnrichDecisionPhase(scraper, llm),
             processor,
         )
 

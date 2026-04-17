@@ -139,7 +139,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.8 Update `Orchestrator.kt` + fix `OrchestratorTest.kt` regression
+- [x] 1.8 Update `Orchestrator.kt` + fix `OrchestratorTest.kt` regression
 
   - **Do**:
     1. In `Orchestrator.kt`:
