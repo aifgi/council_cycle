@@ -160,7 +160,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.9 Add startup validation + Koin wiring in `Main.kt`
+- [x] 1.9 Add startup validation + Koin wiring in `Main.kt`
 
   - **Do**:
     1. After `loadConfig()` in `main()`, insert the `validationErrors` block from design.md:
