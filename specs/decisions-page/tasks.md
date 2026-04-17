@@ -34,7 +34,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.2 Add `DecisionEntry` + three new `LlmResponse` variants + extend `resolveUrls()`
+- [x] 1.2 Add `DecisionEntry` + three new `LlmResponse` variants + extend `resolveUrls()`
 
   - **Do**:
     1. In `LlmResponse.kt`, add `DecisionEntry` data class (fields: `title`, `decisionDate`, `detailUrl`, `decisionMaker?`) after the existing top-level data classes
