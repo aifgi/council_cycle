@@ -60,7 +60,7 @@ Focus: Test-driven implementation. Write test and implementation together per co
 
 ---
 
-- [ ] 1.4 Add `buildFindDecisionsPrompt()` and `buildEnrichDecisionPrompt()` to `Prompts.kt`
+- [x] 1.4 Add `buildFindDecisionsPrompt()` and `buildEnrichDecisionPrompt()` to `Prompts.kt`
 
   - **Do**:
     1. Add `buildFindDecisionsPrompt(decisionMakers: List<String>, dateFrom: String, dateTo: String, pageContent: String): SplitPrompt`

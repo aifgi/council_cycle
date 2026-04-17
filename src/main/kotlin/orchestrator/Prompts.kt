@@ -279,6 +279,130 @@ Rules:
     return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
 }
 
+fun buildFindDecisionsPrompt(
+    decisionMakers: List<String>,
+    dateFrom: String,
+    dateTo: String,
+    pageContent: String,
+): SplitPrompt {
+    val system = """You are identifying delegated decisions from a ModernGov decision listing page.
+
+Topics of interest: $TOPICS_STRING
+Excluded topics (do not include): $EXCLUDED_TOPICS_STRING
+
+Only include decisions that relate to the topics of interest and are NOT about excluded topics.
+
+DECISION MAKER MATCHING RULES
+
+The user prompt contains a list of decision makers to include. Use case-insensitive substring matching:
+a decision maker entry in the listing matches if it contains any of the configured decision maker strings (or vice versa).
+
+DATE RANGE RULES
+
+Only include decisions whose decision date falls within the date range given in the user prompt.
+Dates may appear in various formats; normalise to YYYY-MM-DD.
+
+PAGINATION RULES
+
+ModernGov decision listings may have "Earlier" or "Later" links to navigate between date windows.
+If the current page contains decisions within the date range AND there is a pagination link leading
+to more decisions that could also fall within the date range, set "nextUrl" to that link's URL.
+If all decisions within the date range have been collected on this page, or if the pagination link
+would take you outside the date range, omit "nextUrl" or set it to null.
+
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
+
+Respond with:
+{
+  "type": "decisions_page_scanned",
+  "decisions": [
+    {
+      "title": "Decision title",
+      "decisionDate": "YYYY-MM-DD",
+      "detailUrl": "@1",
+      "decisionMaker": "Name/role if visible in the listing, otherwise omit"
+    }
+  ],
+  "nextUrl": "@2"
+}
+
+- "decisions": only include decisions matching the decision maker filter, topic filter, and date range. Empty array if none match.
+- "nextUrl": URL of the next pagination page if more matching decisions may exist there; omit or null if done.""".trimIndent()
+
+    val decisionMakersList = decisionMakers.joinToString("\n") { "- $it" }
+    val user = "Decision makers (include only these, case-insensitive substring match):\n$decisionMakersList\n\nDate range: $dateFrom to $dateTo\n\n$pageContent"
+    return SplitPrompt(system, user)
+}
+
+fun buildEnrichDecisionPrompt(
+    decision: DecisionEntry,
+    currentExtract: TriagedItem?,
+    pageContent: String,
+): SplitPrompt {
+    val system = """You are extracting full decision detail from a ModernGov decision detail page and its linked documents.
+
+Topics of interest: $TOPICS_STRING
+Excluded topics (do not include): $EXCLUDED_TOPICS_STRING
+
+FIELDS TO EXTRACT
+
+Build a detailed extract including:
+- Decision title
+- Decision maker name/role (exactly as found in the "Decision Maker" field on the page)
+- Decision date
+- Full decision body text
+- Consultation outcomes
+- Conditions
+- Vote counts
+
+DECISION MAKER RULE (AC-3.3)
+
+Always extract and return the decision maker name/role exactly as found in the "Decision Maker" field
+on the detail page. Include it as "decisionMaker" in the "decision_enriched" response, even if it
+differs slightly from the configured decision maker names.
+
+DOCUMENT SKIPPING RULE
+
+Skip linked documents whose title or filename contains any of the following terms (case-insensitive):
+"drawing", "plan", "map", "layout", "elevation", "figure". These are non-textual documents that
+do not contain useful decision text.
+
+URLs are represented as short references like @1, @2. Use these references when specifying URLs in your response.
+
+Respond with ONLY a single JSON object. Do not include any reasoning, explanation, or other text before or after the JSON. The JSON must have a "type" field.
+Always escape double quotes within string values as \".
+
+If you need to fetch additional documents to complete the extract, respond with:
+{
+  "type": "decision_fetch",
+  "urls": ["@1"],
+  "extract": {"title": "Decision title", "extract": "accumulated text so far"},
+  "reason": "Why this document is needed"
+}
+
+Only include URLs that appeared as links in the page content. Omit "extract" on first call if nothing has been accumulated yet.
+
+When enrichment is complete and you have all necessary information, respond with:
+{
+  "type": "decision_enriched",
+  "item": {"title": "Decision title", "extract": "Full enriched extract..."},
+  "decisionMaker": "Name/role from 'Decision Maker' field, or omit if not found"
+}""".trimIndent()
+
+    val userParts = mutableListOf(
+        "Decision title: ${decision.title}\nDetail page URL: ${decision.detailUrl}"
+    )
+    if (currentExtract != null) {
+        userParts.add("Extract accumulated so far:\n${currentExtract.extract}")
+    }
+    userParts.add(pageContent)
+
+    return SplitPrompt(system, userParts.joinToString("\n\n---\n\n"))
+}
+
 fun buildAnalyzeExtractPrompt(
     extract: String,
 ): SplitPrompt {
