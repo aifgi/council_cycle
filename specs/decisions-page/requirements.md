@@ -58,7 +58,7 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 **Acceptance Criteria:**
 - [ ] AC-2.1: The app starts enumeration from `decisionsUrl` (with the council's `dateFrom`/`dateTo` range applied where possible).
 - [ ] AC-2.2: The LLM follows "Earlier" / "Later" navigation links across date windows until the full `dateFrom`–`dateTo` range has been scanned or the configurable max-iterations limit is reached.
-- [ ] AC-2.3: The max-iterations limit for D2 defaults to 50 and is configurable per-council in config.
+- [ ] AC-2.3: The max-iterations limit for D2 defaults to 50 and is defined as a code constant (`DEFAULT_D2_MAX_ITERATIONS = 50` in `Phase.kt`); it is not configurable per-council in config.
 - [ ] AC-2.4: When max iterations is reached before the full range is covered, the app logs a warning identifying the council and the last date window reached, then continues with decisions found so far (no crash).
 - [ ] AC-2.5: Decisions outside the configured date range (before `dateFrom` or after `dateTo`) are not returned by D2, even if they appear on a visited listing page.
 
@@ -74,7 +74,7 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 - [ ] AC-3.1: The LLM compares each decision's title/context on the listing page against the `decisionMakers` list and includes only matches.
 - [ ] AC-3.2: Matching is case-insensitive substring or fuzzy match (e.g. "Cabinet Member for Streets" matches "Cllr Jane Smith — Cabinet Member for Streets").
 - [ ] AC-3.3: If the decision maker is not visible in the listing table row (ModernGov `DS=2` view), the LLM may defer the decision maker check to D3 (detail page), where the "Decision Maker" field is always present.
-- [ ] AC-3.4: A decision is excluded if, after checking the detail page in D3, its decision maker does not match any entry in `decisionMakers`.
+- [ ] AC-3.4: The D3 LLM prompt includes the `decisionMakers` list; if the detail page shows a decision maker that does not match, the LLM returns a result indicating the decision is not relevant (e.g. empty/irrelevant extract). Code-level string matching on decision maker names is not applied — the LLM's judgement is trusted to handle name variations and spelling differences.
 - [ ] AC-3.5: If zero decisions match after scanning the full date range, the app logs an informational message for the council and produces no output (no crash).
 - [ ] AC-3.6: The D2 LLM prompt includes the `TOPICS` (topics of interest) and `EXCLUDED_TOPICS` lists from `Prompts.kt`; the LLM excludes decisions whose title clearly falls outside the topics of interest or matches an excluded topic — same filtering logic as Phase 4 in the meetings pipeline.
 - [ ] AC-3.7: The D3 LLM prompt also includes the topics of interest so the LLM focuses enrichment on content relevant to those topics and can skip irrelevant linked documents.
@@ -120,9 +120,9 @@ Enable Council Cycle to scrape UK council decision registers (ModernGov `mgDeleg
 **So that** adding the decisions pipeline introduces zero regression
 
 **Acceptance Criteria:**
-- [ ] AC-6.1: All existing JUnit 5 tests pass without modification after the decisions pipeline is added (`./gradlew test`).
+- [ ] AC-6.1: All existing JUnit 5 tests pass after the decisions pipeline is added (`./gradlew test`). The one permitted modification is updating `OrchestratorTest.kt` to rename the `siteUrl` constructor argument to `meetingsUrl` (a mechanical rename, not a behavioural change).
 - [ ] AC-6.2: No changes are made to Phase 1–6 class files, their prompts, or their `LlmResponse` variants.
-- [ ] AC-6.3: `CouncilConfig` fields `siteUrl` and `committees` retain their existing semantics for meetings mode; no field is removed or renamed.
+- [ ] AC-6.3: `CouncilConfig` fields for meetings mode retain their existing semantics. `siteUrl` is renamed to `meetingsUrl` (String?, nullable, default null) to mirror `decisionsUrl`; the YAML key changes accordingly and existing config files must be migrated. `committees` is unchanged.
 - [ ] AC-6.4: A config file with no `mode` field parses identically to one with `mode: meetings` and runs the existing pipeline.
 
 ---
@@ -180,9 +180,9 @@ Full config shape with a decisions-mode council alongside an existing meetings-m
   dateFrom: "2025-01-01"
   dateTo: "2025-12-31"
 
-# Meetings-mode council (existing — unchanged)
+# Meetings-mode council (meetingsUrl replaces siteUrl)
 - name: Barnet
-  siteUrl: https://barnet.moderngov.co.uk
+  meetingsUrl: https://barnet.moderngov.co.uk
   committees:
     - Planning Committee
     - Transport Committee
@@ -195,14 +195,14 @@ Full config shape with a decisions-mode council alongside an existing meetings-m
 | Field | Type | Default | Meetings | Decisions |
 |-------|------|---------|----------|-----------|
 | `name` | String | — | Required | Required |
-| `siteUrl` | String | — | Required | Optional |
+| `meetingsUrl` | String? | null | Required | Ignored |
 | `mode` | String | `"meetings"` | Optional | Required (`"decisions"`) |
 | `decisionsUrl` | String? | null | Ignored | Required |
 | `committees` | List\<String\> | `[]` | Required (phase 1) | Ignored |
 | `decisionMakers` | List\<String\> | `[]` | Ignored | Required (min 1) |
 | `dateFrom` | String? | null | Optional | Optional |
 | `dateTo` | String? | null | Optional | Optional |
-| ~~`d2MaxIterations`~~ | — | — | — | Not in config; constant in code |
+| `d2MaxIterations` | — | — | — | Not in config; constant `DEFAULT_D2_MAX_ITERATIONS = 50` in `Phase.kt` |
 
 ---
 
@@ -246,7 +246,7 @@ Full config shape with a decisions-mode council alongside an existing meetings-m
 
 - **Decision maker visibility in listing**: `DS=3` (details view) may expose the decision maker column in the listing table, enabling D2 to filter without visiting detail pages. Should the app always request `DS=3` when constructing the listing URL, or leave it to the LLM? Resolving this could reduce D3 calls significantly.
 - **Date window construction**: Should D2 construct its own date windows from `dateFrom`/`dateTo` (fixed-size slices) rather than following "Earlier"/"Later" links? Constructed windows would be more predictable and easier to bound, but require parsing the `DR` URL parameter format.
-- **`d2MaxIterations` placement**: Per-council config field (current proposal) vs. a top-level app-level default. Decision needed before implementing `CouncilConfig` changes.
+- **`d2MaxIterations` placement**: Resolved — code constant in `Phase.kt`, not a config field.
 - **Document skipping heuristic**: The LLM uses link title/filename to identify drawings. Should there be a configurable blocklist of keywords (e.g. `["drawing", "plan", "map", "elevation", "figure"]`) or is LLM judgement sufficient?
 
 ---

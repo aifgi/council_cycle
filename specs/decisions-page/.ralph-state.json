@@ -1,0 +1,13 @@
+{
+  "source": "spec",
+  "name": "decisions-page",
+  "basePath": "specs/decisions-page",
+  "phase": "design",
+  "taskIndex": 0,
+  "totalTasks": 0,
+  "taskIteration": 1,
+  "maxTaskIterations": 5,
+  "globalIteration": 1,
+  "maxGlobalIterations": 100,
+  "awaitingApproval": true
+}

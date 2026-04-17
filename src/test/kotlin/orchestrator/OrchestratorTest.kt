@@ -13,10 +13,12 @@ import orchestrator.phase.AnalyzeExtractInput
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.EnrichAgendaItemsInput
 import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.EnrichDecisionPhase
 import orchestrator.phase.FindAgendaInput
 import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesInput
 import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindDecisionsPhase
 import orchestrator.phase.FindMeetingsInput
 import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsInput
@@ -52,6 +54,8 @@ class OrchestratorTest {
             IdentifyAgendaItemsPhase(scraper, llm),
             EnrichAgendaItemsPhase(scraper, llm),
             AnalyzeExtractPhase(scraper, llm),
+            FindDecisionsPhase(scraper, llm),
+            EnrichDecisionPhase(scraper, llm),
             processor,
         )
 
@@ -586,7 +590,7 @@ class OrchestratorTest {
         makeOrchestrator(scraper, llm, processor).processCouncil(
             CouncilConfig(
                 name = "Test Council",
-                siteUrl = "https://council.example.com",
+                meetingsUrl = "https://council.example.com",
                 committees = listOf("Planning"),
                 dateFrom = "2026-01-01",
                 dateTo = "2026-06-30",

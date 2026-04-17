@@ -57,6 +57,28 @@ sealed interface LlmResponse {
         val fetchUrls: List<String> = emptyList(),
         val fetchReason: String? = null,
     ) : LlmResponse
+
+    @Serializable
+    @SerialName("decisions_page_scanned")
+    data class DecisionsPageScanned(
+        val decisions: List<DecisionEntry>,
+        val nextUrl: String? = null,
+    ) : LlmResponse
+
+    @Serializable
+    @SerialName("decision_fetch")
+    data class DecisionFetch(
+        val urls: List<String>,
+        val extract: TriagedItem? = null,
+        val reason: String,
+    ) : LlmResponse
+
+    @Serializable
+    @SerialName("decision_enriched")
+    data class DecisionEnriched(
+        val item: TriagedItem,
+        val decisionMaker: String? = null,
+    ) : LlmResponse
 }
 
 @Serializable
@@ -89,6 +111,14 @@ data class Scheme(
 data class TriagedItem(
     val title: String,
     val extract: String,
+)
+
+@Serializable
+data class DecisionEntry(
+    val title: String,
+    val decisionDate: String,
+    val detailUrl: String,
+    val decisionMaker: String? = null,
 )
 
 @Serializable
@@ -132,4 +162,10 @@ fun LlmResponse.resolveUrls(resolve: (String) -> String): LlmResponse = when (th
     )
     is LlmResponse.AgendaFound -> copy(agendaUrl = resolve(agendaUrl))
     is LlmResponse.AgendaItemsIdentified -> copy(fetchUrls = fetchUrls.map { resolve(it) })
+    is LlmResponse.DecisionsPageScanned -> copy(
+        decisions = decisions.map { it.copy(detailUrl = resolve(it.detailUrl)) },
+        nextUrl = nextUrl?.let { resolve(it) },
+    )
+    is LlmResponse.DecisionFetch -> copy(urls = urls.map { resolve(it) })
+    is LlmResponse.DecisionEnriched -> this
 }

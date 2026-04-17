@@ -5,10 +5,14 @@ import orchestrator.phase.AnalyzeExtractInput
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.EnrichAgendaItemsInput
 import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.EnrichDecisionInput
+import orchestrator.phase.EnrichDecisionPhase
 import orchestrator.phase.FindAgendaInput
 import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesInput
 import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindDecisionsInput
+import orchestrator.phase.FindDecisionsPhase
 import orchestrator.phase.FindMeetingsInput
 import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsInput
@@ -27,15 +31,25 @@ class Orchestrator(
     private val identifyAgendaItemsPhase: IdentifyAgendaItemsPhase,
     private val enrichAgendaItemsPhase: EnrichAgendaItemsPhase,
     private val analyzeExtractPhase: AnalyzeExtractPhase,
+    private val findDecisionsPhase: FindDecisionsPhase,
+    private val enrichDecisionPhase: EnrichDecisionPhase,
     private val resultProcessor: ResultProcessor,
 ) {
     suspend fun processCouncil(council: CouncilConfig) {
+        if (council.mode == "decisions") {
+            processCouncilDecisions(council)
+        } else {
+            processCouncilMeetings(council)
+        }
+    }
+
+    private suspend fun processCouncilMeetings(council: CouncilConfig) {
         val dateFrom = council.dateFrom ?: LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         val dateTo = council.dateTo
             ?: LocalDate.now().plusMonths(3).format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         val committeeUrls = findCommitteePagesPhase.execute(
-            FindCommitteePagesInput(council.siteUrl, council.committees)
+            FindCommitteePagesInput(council.meetingsUrl!!, council.committees)
         )
         if (committeeUrls == null) {
             logger.warn("Could not find committee pages for council '{}'", council.name)
@@ -105,5 +119,62 @@ class Orchestrator(
 
             resultProcessor.process(council.name, committee, allSchemes)
         }
+    }
+
+    private suspend fun processCouncilDecisions(council: CouncilConfig) {
+        val dateFrom = council.dateFrom ?: LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val dateTo = council.dateTo
+            ?: LocalDate.now().plusMonths(3).format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+        val decisions = findDecisionsPhase.execute(
+            FindDecisionsInput(
+                decisionsUrl = council.decisionsUrl!!,
+                decisionMakers = council.decisionMakers,
+                dateFrom = dateFrom,
+                dateTo = dateTo,
+            )
+        )
+        if (decisions == null) {
+            logger.warn("Find decisions phase failed for council '{}'", council.name)
+            return
+        }
+        if (decisions.isEmpty()) {
+            logger.info("No matching decisions found for council '{}'", council.name)
+            return
+        }
+        logger.info("Found {} matching decision(s) for council '{}'", decisions.size, council.name)
+
+        val allSchemes = mutableListOf<Scheme>()
+        for (decision in decisions) {
+            logger.info("Enriching decision '{}' ({})", decision.title, decision.detailUrl)
+
+            val enriched = enrichDecisionPhase.execute(EnrichDecisionInput(decision))
+            if (enriched == null) {
+                logger.warn("Enrich decision phase failed for '{}', skipping", decision.title)
+                continue
+            }
+
+            val triaged = enriched.item
+            val extract = "## ${triaged.title}\n${triaged.extract}"
+            val decisionMakerLabel = enriched.decisionMaker
+                ?: decision.decisionMaker
+                ?: council.decisionMakers.firstOrNull()
+                ?: council.name
+            val syntheticMeeting = Meeting(
+                date = decision.decisionDate,
+                title = decision.title,
+                meetingUrl = decision.detailUrl,
+            )
+
+            val schemes = analyzeExtractPhase.execute(
+                AnalyzeExtractInput(extract, decisionMakerLabel, syntheticMeeting)
+            )
+            if (schemes != null) {
+                allSchemes.addAll(schemes)
+            }
+        }
+
+        val outputLabel = council.decisionMakers.joinToString(", ")
+        resultProcessor.process(council.name, outputLabel, allSchemes)
     }
 }

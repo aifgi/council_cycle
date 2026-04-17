@@ -13,6 +13,7 @@ const val DEFAULT_LIGHT_MODEL = "claude-sonnet-4-6"
 const val DEFAULT_HEAVY_MODEL = "claude-opus-4-6"
 const val DEFAULT_MAX_ITERATIONS = 5
 const val DEFAULT_TRIAGE_MAX_ITERATIONS = 5
+const val DEFAULT_D2_MAX_ITERATIONS = 50
 
 interface Phase<in I, out O> {
     val name: String

@@ -10,8 +10,10 @@ import llm.LlmClient
 import llm.LoggingLlmClient
 import orchestrator.phase.AnalyzeExtractPhase
 import orchestrator.phase.EnrichAgendaItemsPhase
+import orchestrator.phase.EnrichDecisionPhase
 import orchestrator.phase.FindAgendaPhase
 import orchestrator.phase.FindCommitteePagesPhase
+import orchestrator.phase.FindDecisionsPhase
 import orchestrator.phase.FindMeetingsPhase
 import orchestrator.phase.IdentifyAgendaItemsPhase
 import orchestrator.Orchestrator
@@ -37,6 +39,27 @@ fun main(args: Array<String>) {
     }
 
     val appConfig = loadConfig(args[0]) ?: return
+
+    val validationErrors = appConfig.councils.flatMap { council ->
+        buildList {
+            if (council.mode == "decisions") {
+                if (council.decisionsUrl.isNullOrBlank()) {
+                    add("Council '${council.name}': mode=decisions but decisionsUrl is missing or blank")
+                }
+                if (council.decisionMakers.isEmpty()) {
+                    add("Council '${council.name}': mode=decisions but decisionMakers is empty")
+                }
+            } else {
+                if (council.meetingsUrl.isNullOrBlank()) {
+                    add("Council '${council.name}': mode=meetings but meetingsUrl is missing or blank")
+                }
+            }
+        }
+    }
+    if (validationErrors.isNotEmpty()) {
+        validationErrors.forEach { logger.error(it) }
+        return
+    }
 
     val credentialsFile = File(args[1])
     if (!credentialsFile.exists()) {
@@ -87,7 +110,9 @@ fun main(args: Array<String>) {
         single { IdentifyAgendaItemsPhase(get(), get()) }
         single { EnrichAgendaItemsPhase(get(), get()) }
         single { AnalyzeExtractPhase(get(), get()) }
-        single { Orchestrator(get(), get(), get(), get(), get(), get(), get()) }
+        single { FindDecisionsPhase(get(), get()) }
+        single { EnrichDecisionPhase(get(), get()) }
+        single { Orchestrator(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     }
 
     val koinApp = startKoin {
